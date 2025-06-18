@@ -1,0 +1,5 @@
+{
+  "deploy": {
+    "script": "python app.py"
+  }
+}
