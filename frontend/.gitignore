@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+frontend/dist/
+backend/chat.db
+__pycache__/
+
 
 # Editor directories and files
 .vscode/*

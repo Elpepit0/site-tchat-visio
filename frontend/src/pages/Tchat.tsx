@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
-import '../index.css';
 
 interface Message {
   id: string;
@@ -19,7 +18,6 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Récupérer le pseudo connecté via /me (backend doit servir cette route)
   useEffect(() => {
     fetch('http://localhost:5000/me', { credentials: 'include' })
       .then(res => res.json())
@@ -36,38 +34,30 @@ export default function Chat() {
       });
   }, [navigate]);
 
-  // Connexion Socket.IO quand pseudo est disponible
   useEffect(() => {
     if (!pseudo) return;
 
     const socket = io('http://localhost:5000', {
       withCredentials: true,
+      transports: ['websocket', 'polling'],
+      
     });
     socketRef.current = socket;
 
-    const handleMessages = (msgs: Message[]) => setMessages(msgs);
-    const handleConnect = () => setConnected(true);
-    const handleDisconnect = () => setConnected(false);
-
-    socket.on('messages', handleMessages);
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-
-    
-    socket.on('connect_error', () => {
-      setConnected(false);
-    });
+    socket.on('messages', (msgs: Message[]) => setMessages(msgs));
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
+    socket.on('connect_error', () => setConnected(false));
 
     return () => {
-      socket.off('messages', handleMessages);
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
+      socket.off('messages');
+      socket.off('connect');
+      socket.off('disconnect');
       socket.off('connect_error');
       socket.disconnect();
     };
   }, [pseudo]);
 
-  // Scroll automatique vers le bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -88,23 +78,18 @@ export default function Chat() {
     });
   };
 
-  if (loading) {
-    return <div>Chargement...</div>;
-  }
-  if (!pseudo) {
-    return null;
-  }
+  if (loading) return <div>Chargement...</div>;
+  if (!pseudo) return null;
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-gradient-to-br from-indigo-100 via-white to-indigo-200 py-8 px-4">
       <div className="w-full max-w-3xl bg-white shadow-md rounded-2xl p-6 flex flex-col h-full mt-14">
         <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
           <h1 className="text-2xl font-bold text-indigo-700">Tchat en temps réel</h1>
-
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={handleLogout}
-              className="text-red-500 px-4 py-2  hover:text-red-700 transition"
+              className="text-red-500 px-4 py-2 hover:text-red-700 transition"
             >
               Déconnexion
             </button>
@@ -122,7 +107,6 @@ export default function Chat() {
             </button>
           </div>
         </div>
-
 
         {!connected && (
           <div className="bg-yellow-100 text-yellow-800 px-4 py-2 mb-4 rounded-lg text-center">

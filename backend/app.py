@@ -1,5 +1,6 @@
 import eventlet
 eventlet.monkey_patch()
+
 from flask import Flask, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -8,24 +9,31 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
 
+# Secret key et config sessions
 app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
-
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False
 
+# Database config
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Port
 port = int(os.environ.get('PORT', 5000))
 
-CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
-socketio = SocketIO(app, cors_allowed_origins=["http://localhost:5173"], async_mode="eventlet", manage_session=False)
+# CORS pour localhost:5173 (ton frontend Vite/React)
+CORS(app, origins=["http://localhost:5000"], supports_credentials=True)
+
+# Socket.IO avec eventlet
+socketio = SocketIO(app, cors_allowed_origins=["http://localhost:5000"], async_mode="eventlet", manage_session=True)
+
 
 db = SQLAlchemy(app)
 
+# Modèle utilisateur
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -34,6 +42,16 @@ class User(db.Model):
 with app.app_context():
     db.create_all()
 
+# Route pour servir le frontend React buildé
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return app.send_static_file(path)
+    else:
+        return app.send_static_file('index.html')
+
+# Inscription
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json or {}
@@ -49,6 +67,7 @@ def register():
     db.session.commit()
     return jsonify({'message': 'Utilisateur créé avec succès'})
 
+# Connexion
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json or {}
@@ -62,27 +81,26 @@ def login():
     session['username'] = user.username
     return jsonify({'message': 'Connexion réussie', 'username': user.username})
 
+# Récupérer l'utilisateur connecté
 @app.route('/me', methods=['GET'])
 def me():
     if 'username' in session:
         return jsonify({'username': session['username']})
     return jsonify({'error': 'Non connecté'}), 401
 
+# Déconnexion
 @app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
     return jsonify({'message': 'Déconnecté'})
 
+# Messages en mémoire (pas persistés)
 messages = []
 
 @socketio.on('connect')
 def handle_connect():
-    if 'username' not in session:
-        print('❌ Tentative de connexion sans session')
-        disconnect()
-        return
-    print(f"✅ {session['username']} connecté via WebSocket")
     emit('messages', messages)
+
 
 @socketio.on('send_message')
 def handle_send_message(data):
@@ -105,8 +123,7 @@ def handle_delete_message(data):
     messages = [m for m in messages if m['id'] != msg_id]
     emit('messages', messages, broadcast=True)
 
-# Gestion des rooms et signaling WebRTC
-
+# Gestion des rooms WebRTC (optionnel)
 @socketio.on('join-room')
 def handle_join_room(room):
     join_room(room)

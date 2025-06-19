@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../index.css';
 
 export default function Home() {
   const [pseudo, setPseudo] = useState<string | null>(null);
