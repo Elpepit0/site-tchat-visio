@@ -155,7 +155,4 @@ def handle_ice(data):
     if room and candidate:
         emit('ice-candidate', candidate, room=room, include_self=False)
 
-def main():
-    socketio.run(app, host='0.0.0.0', port=port)
 
-main()

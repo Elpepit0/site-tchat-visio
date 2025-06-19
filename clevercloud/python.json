@@ -1,13 +1,10 @@
 {
   "deploy": {
-    "modules": [
-      {
-        "requirements": "requirements.txt",
-        "path": ".",
-        "build": [],
-        "postbuild": [],
-        "run": "uwsgi --ini uwsgi.ini"
-      }
-    ]
+    "default": {
+      "env": {
+        "PORT": "5000"
+      },
+      "start": "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT app:app"
+    }
   }
 }

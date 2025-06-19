@@ -1,5 +1,8 @@
 Flask==3.0.3
-uWSGI==2.0.23
+Flask-Cors==6.0.2
+flask-socketio==5.13.0
+eventlet==0.40.0
+gunicorn==21.1.2
 attrs==23.2.0
 Babel==2.10.3
 bcrypt==3.2.2
