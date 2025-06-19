@@ -1,0 +1,13 @@
+{
+  "deploy": {
+    "modules": [
+      {
+        "requirements": "requirements.txt",
+        "path": ".",
+        "build": [],
+        "postbuild": [],
+        "run": "uwsgi --ini uwsgi.ini"
+      }
+    ]
+  }
+}
