@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, disconnect, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
+import time
 import uuid
 import os
 
@@ -94,13 +95,38 @@ def logout():
     session.clear()
     return jsonify({'message': 'Déconnecté'})
 
+visitors = {}
+
+@app.route('/ping', methods=['POST'])
+def ping():
+    visitor_id = request.remote_addr  # ou un cookie de session
+    visitors[visitor_id] = time.time()
+    return '', 204
+
+@app.route('/active_visitors')
+def active_visitors():
+    now = time.time()
+    # Garde que ceux qui ont pingé dans les 2 dernières secondes
+    active = [v for v in visitors.values() if now - v < 2]
+    return jsonify({'count': len(active)})
+
 # Messages en mémoire (pas persistés)
 messages = []
-
+connected_users = 0
 @socketio.on('connect')
-def handle_connect():
+def handle_connect(sid):
+    global connected_users
+    connected_users += 1
+    print(f"Nouvelle connexion, total : {connected_users}")
+    socketio.emit('userCount', connected_users)
     emit('messages', messages)
 
+@socketio.on('disconnect')
+def handle_disconnect(sid):
+    global connected_users
+    connected_users -= 1
+    socketio.emit('userCount', connected_users)
+    emit('messages', messages)
 
 @socketio.on('send_message')
 def handle_send_message(data):
