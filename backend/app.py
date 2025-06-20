@@ -1,7 +1,7 @@
 # === IMPORTS ===
 # Importation des outils nécessaires à Flask, à la base de données, aux WebSockets, à la sécurité et au système.
 import eventlet
-eventlet.monkey_patch()
+# eventlet.monkey_patch()  # NE PAS MONKEY PATCHER avec Gunicorn
 
 from flask import Flask, request, jsonify, session, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
