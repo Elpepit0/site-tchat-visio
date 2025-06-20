@@ -43,7 +43,7 @@ export default function Chat() {
     const host = window.location.hostname;
     const socket = io(`${protocol}://${host}`, {
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
     });
     socketRef.current = socket;
 
