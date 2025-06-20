@@ -216,5 +216,6 @@ def not_found(e):
 # === LANCEMENT DU SERVEUR ===
 
 if __name__ == '__main__':
+    print("Eventlet utilisé :", socketio.async_mode)
     socketio.run(app, host='0.0.0.0', port=port)
 
