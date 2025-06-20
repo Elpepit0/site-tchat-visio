@@ -22,7 +22,7 @@ export default function VideoChat() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:5000/me', { credentials: 'include' })
+    fetch('/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.username) {
@@ -39,7 +39,7 @@ export default function VideoChat() {
 
   // Déconnexion
   const handleLogout = async () => {
-    await fetch('http://localhost:5000/logout', {
+    await fetch('/logout', {
       method: 'POST',
       credentials: 'include',
     });

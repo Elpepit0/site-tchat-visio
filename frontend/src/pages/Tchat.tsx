@@ -21,7 +21,7 @@ export default function Chat() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('http://localhost:5000/me', { credentials: 'include' })
+    fetch('/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.username) {
@@ -96,7 +96,7 @@ export default function Chat() {
   };
 
   const handleLogout = () => {
-    fetch('http://localhost:5000/logout', {
+    fetch('/logout', {
       method: 'POST',
       credentials: 'include',
     }).finally(() => {

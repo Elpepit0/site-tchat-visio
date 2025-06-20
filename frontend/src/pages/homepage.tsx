@@ -16,7 +16,7 @@ export default function Home() {
   const navigate = useNavigate();
   
   function fetchActiveVisitors() {
-  fetch('http://localhost:5000/active_visitors', {
+  fetch('/active_visitors', {
     credentials: 'include',
   })
     .then(res => res.json())
@@ -34,7 +34,7 @@ export default function Home() {
   
   useEffect(() => {
     function sendPing() {
-      fetch('http://localhost:5000/ping', { method: 'POST', credentials: 'include' }).catch(() => {});
+      fetch('/ping', { method: 'POST', credentials: 'include' }).catch(() => {});
     }
 
     sendPing();
@@ -45,7 +45,7 @@ export default function Home() {
 
 
   useEffect(() => {
-    fetch('http://localhost:5000/me', {
+    fetch('/me', {
       credentials: 'include',
     })
       .then((res) => res.json())
@@ -64,7 +64,7 @@ export default function Home() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch('http://localhost:5000/logout', {
+    await fetch('/logout', {
       method: 'POST',
       credentials: 'include',
     });

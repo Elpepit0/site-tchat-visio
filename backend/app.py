@@ -27,13 +27,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Désactive un système de notification inutile.
 
 # Port d'exécution (par défaut 5000, mais modifiable via une variable d'environnement).
-port = int(os.environ.get('PORT', 9000))
+port = int(os.environ.get('PORT', 5000))
 
 # CORS : Autorise le frontend (React) à faire des requêtes vers le backend (Flask).
-CORS(app, origins=["http://localhost:5000"], supports_credentials=True)
+CORS(app, origins="*", supports_credentials=True)
 
 # WebSocket avec Flask-SocketIO, en mode eventlet, et gestion automatique des sessions.
-socketio = SocketIO(app, cors_allowed_origins=["http://localhost:5000"], async_mode="eventlet", manage_session=True)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet", manage_session=True)
 
 # Initialisation de SQLAlchemy (ORM pour gérer la base de données).
 db = SQLAlchemy(app)
@@ -215,6 +215,6 @@ def not_found(e):
 
 # === LANCEMENT DU SERVEUR ===
 
-def main():
+if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=port)
-main()
+

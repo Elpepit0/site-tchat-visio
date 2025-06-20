@@ -9,7 +9,7 @@ function Login() {
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    const res = await fetch('http://localhost:5000/login', {
+    const res = await fetch('/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
