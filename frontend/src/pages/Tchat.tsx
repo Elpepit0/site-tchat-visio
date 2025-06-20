@@ -39,7 +39,9 @@ export default function Chat() {
   useEffect(() => {
     if (!pseudo) return;
 
-    const socket = io('http://localhost:5000', {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host = window.location.hostname;
+    const socket = io(`${protocol}://${host}`, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
     });
