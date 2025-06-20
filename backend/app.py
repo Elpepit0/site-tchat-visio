@@ -27,7 +27,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Désactive un système de notification inutile.
 
 # Port d'exécution (par défaut 5000, mais modifiable via une variable d'environnement).
-port = int(os.environ.get('PORT', 5000))
+port = int(os.environ.get('PORT', 9000))
 
 # CORS : Autorise le frontend (React) à faire des requêtes vers le backend (Flask).
 CORS(app, origins=["http://localhost:5000"], supports_credentials=True)
