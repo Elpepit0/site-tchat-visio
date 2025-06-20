@@ -16,10 +16,12 @@ export default function Home() {
   const navigate = useNavigate();
   
   function fetchActiveVisitors() {
-  fetch('http://localhost:5000/active_visitors')
+  fetch('http://localhost:5000/active_visitors', {
+    credentials: 'include',
+  })
     .then(res => res.json())
     .then(data => {
-      setActiveVisitors(data.count);
+      setActiveVisitors(data.active_visitors);
     })
     .catch(err => console.error('Erreur fetch active visitors:', err));
   }
@@ -32,7 +34,7 @@ export default function Home() {
   
   useEffect(() => {
     function sendPing() {
-      fetch('http://localhost:5000/ping', { method: 'POST' }).catch(() => {});
+      fetch('http://localhost:5000/ping', { method: 'POST', credentials: 'include' }).catch(() => {});
     }
 
     sendPing();
@@ -104,29 +106,29 @@ export default function Home() {
                 : "Connecte-toi ou crée un compte pour commencer à discuter avec le monde entier."}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-8 justify-center md:justify-start">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center md:justify-start">
               {pseudo ? (
                 <>
                   <button
                     onClick={() => navigate('/chat')}
-                    className="px-4 py-1 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 shadow-md transition"
+                    className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-indigo-700 transition-all duration-200"
                   >
-                    Accéder au Tchat
+                    💬 Accéder au Tchat
                   </button>
                   <button
                     onClick={() => navigate('/video')}
-                    className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md transition"
+                    className="px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-blue-700 transition-all duration-200"
                   >
-                    Accéder à la Visio
+                    📹 Accéder à la Visio
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="px-6 py-3 rounded-lg border border-red-500 text-red-500 font-semibold hover:bg-red-50 transition"
+                    className="px-6 py-3 rounded-xl border border-red-500 text-red-600 font-semibold hover:bg-red-50 hover:shadow-sm transition-all duration-200"
                   >
-                    Déconnexion
+                    🚪 Déconnexion
                   </button>
                   {/* Indicateur de connexion */}
-                  <div className="flex items-center space-x-2 mt-4 animate-fade-in">
+                  <div className="flex items-center space-x-2 mt-4 animate-fade-in w-full sm:w-auto">
                     <span className="relative flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
@@ -135,24 +137,23 @@ export default function Home() {
                       {activeVisitors} visiteur{activeVisitors > 1 ? 's' : ''} actuellement sur le site
                     </p>
                   </div>
-
                 </>
               ) : (
                 <>
                   <button
                     onClick={() => navigate('/login')}
-                    className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 shadow-md transition"
+                    className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-indigo-700 transition-all duration-200"
                   >
-                    Connexion
+                    🔐 Connexion
                   </button>
                   <button
                     onClick={() => navigate('/register')}
-                    className="px-6 py-3 rounded-lg border border-gray-400 text-gray-700 font-semibold hover:bg-gray-100 transition"
+                    className="px-6 py-3 rounded-xl border border-gray-400 text-gray-700 font-semibold hover:bg-gray-100 hover:shadow-sm transition-all duration-200"
                   >
-                    Créer un compte
+                    ✍️ Créer un compte
                   </button>
                   {/* Indicateur de connexion */}
-                  <div className="flex items-center space-x-2 mt-4 animate-fade-in">
+                  <div className="flex items-center space-x-2 mt-4 animate-fade-in w-full sm:w-auto">
                     <span className="relative flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
@@ -161,10 +162,10 @@ export default function Home() {
                       {activeVisitors} visiteur{activeVisitors > 1 ? 's' : ''} actuellement sur le site
                     </p>
                   </div>
-
                 </>
               )}
             </div>
+
           </motion.div>
 
           {/* Image animée */}
