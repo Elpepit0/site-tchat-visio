@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/home/yohan/Documents/Projet stage/Project chat clever/backend/venv/bin/python3" "$0" "$@"
+'''exec' "/home/yohan/Documents/Projet stage/Project chat clever/backend/venv/bin/python3.11" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re
