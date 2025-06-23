@@ -96,6 +96,7 @@ export default function Chat() {
       socket.off('connect_error');
       socket.off('user_list');
       socket.off('user_count');
+      socket.removeAllListeners(); // <-- Nettoyage complet
       socket.disconnect(); // <-- Ajout important
       socketRef.current = null;
     };
@@ -190,19 +191,21 @@ export default function Chat() {
             </div>
           )}
 
-          <section className="flex-grow overflow-y-auto rounded-lg bg-gray-50 border border-gray-200 p-4 mb-6">
+          <section>
             {messages.length === 0 ? (
-              <p className="text-gray-500 italic">Aucun message pour le moment</p>
+              <p>Aucun message pour le moment</p>
             ) : (
-              messages.map(({ id, pseudo: user, text }) => (
-                <div key={id} className="mb-3">
-                  <span className="font-semibold text-indigo-600">{user}:</span>{' '}
-                  <span className="text-gray-800">{text}</span>
-                </div>
-              ))
+              messages.map(({ id, pseudo: user, text }) => {
+                console.log('Message ID:', id);
+                return (
+                  <div key={id}>
+                    <strong>{user}:</strong> {text}
+                  </div>
+                );
+              })
             )}
-            <div ref={messagesEndRef} />
           </section>
+
 
           <footer className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <input
