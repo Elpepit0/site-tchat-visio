@@ -53,11 +53,11 @@ export default function Chat() {
     if (!pseudo) return;
 
     if (socketRef.current) return;
-    
+
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const host = window.location.host;
     const socket = io(`${protocol}://${host}`, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       withCredentials: true,
     });
     socketRef.current = socket;
