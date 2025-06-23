@@ -189,34 +189,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Vague décorative en bas */}
-      <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] z-0">
-        <div className="relative w-[200%] h-[300px] animate-[waveSlide_10s_linear_infinite] flex">
-          {[...Array(2)].map((_, i) => (
-            <svg
-              key={i}
-              className="w-1/2 h-full"
-              viewBox="0 0 1440 320"
-              preserveAspectRatio="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fill="#c7d2fe"
-                d="M0,200
-                        L60,190
-                        C120,180,240,160,360,180
-                        C480,200,600,240,720,220
-                        C840,200,960,160,1080,180
-                        C1200,200,1320,190,1380,200
-                        L1440,200
-                        V320
-                        H0
-                        Z"
-              />
-            </svg>
-          ))}
-        </div>
-      </div>
 
 
 
