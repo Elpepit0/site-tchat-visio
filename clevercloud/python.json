@@ -1,6 +1,0 @@
-{
-  "deploy": [
-    "pip install -r requirements.txt"
-  ],
-  "python_version": "3.11"
-}
