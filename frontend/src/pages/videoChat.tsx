@@ -60,43 +60,66 @@ export default function VideoChat() {
   }
 
   return (
-    <div className="flex flex-col items-center space-y-10 min-h-screen bg-gradient-to-br from-blue-100 via-white to-blue-200 py-16 px-4">
+   <div className="flex flex-col items-center space-y-8 sm:space-y-10 min-h-screen bg-gradient-to-br from-blue-100 via-white to-blue-200 py-10 sm:py-16 px-4">
       {/* En-tête */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 max-w-5xl mx-auto w-full px-4">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-indigo-700 drop-shadow-md text-center md:text-left">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 sm:mb-8 max-w-5xl mx-auto w-full px-2 sm:px-4">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-indigo-700 drop-shadow-md text-center md:text-left">
           Visio
         </h1>
         <div className="flex flex-wrap justify-center md:justify-end gap-2">
-          <button onClick={handleLogout} className="text-red-500 px-4 py-2 hover:text-red-700 transition">
+          <button onClick={handleLogout} className="text-red-500 px-4 py-2 text-sm sm:text-base hover:text-red-700 transition">
             Déconnexion
           </button>
-          <button onClick={() => navigate('/chat')} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+          <button
+            onClick={() => navigate('/chat')}
+            className="bg-indigo-600 text-white px-4 py-2 text-sm sm:text-base rounded-lg hover:bg-indigo-700 transition"
+          >
             Accéder au tchat
           </button>
-          <button onClick={() => navigate('/')} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+          <button
+            onClick={() => navigate('/')}
+            className="bg-gray-200 text-gray-700 px-4 py-2 text-sm sm:text-base rounded-lg hover:bg-gray-300 transition"
+          >
             Retour à l'accueil
           </button>
         </div>
       </div>
 
       {/* Vidéos */}
-      <div className="flex flex-col md:flex-row items-center gap-6">
-        <video ref={localVideoRef} autoPlay playsInline className="w-full md:w-96 h-64 rounded-3xl border border-gray-300 shadow-lg" />
-        <video ref={remoteVideoRef} autoPlay playsInline className="w-full md:w-96 h-64 rounded-3xl border border-gray-300 shadow-lg" />
+      <div className="flex flex-col md:flex-row items-center justify-center gap-4 sm:gap-6 w-full max-w-4xl px-2 sm:px-0">
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          className="w-full sm:w-[90%] md:w-1/2 h-56 sm:h-64 rounded-3xl border border-gray-300 shadow-lg"
+        />
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="w-full sm:w-[90%] md:w-1/2 h-56 sm:h-64 rounded-3xl border border-gray-300 shadow-lg"
+        />
       </div>
 
       {/* Boutons d'appel */}
-      <div>
+      <div className="pt-4">
         {!inCall ? (
-          <button onClick={startCall} className="bg-green-600 text-white px-10 py-4 rounded-2xl font-semibold hover:bg-green-700 shadow-md transition">
+          <button
+            onClick={startCall}
+            className="bg-green-600 text-white px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-2xl font-semibold hover:bg-green-700 shadow-md transition"
+          >
             Démarrer l'appel
           </button>
         ) : (
-          <button onClick={endCall} className="bg-red-600 text-white px-10 py-4 rounded-2xl font-semibold hover:bg-red-700 shadow-md transition">
+          <button
+            onClick={endCall}
+            className="bg-red-600 text-white px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-2xl font-semibold hover:bg-red-700 shadow-md transition"
+          >
             Terminer l'appel
           </button>
         )}
       </div>
     </div>
+
   );
 }

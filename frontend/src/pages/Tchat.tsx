@@ -111,10 +111,10 @@ export default function Chat() {
   if (!pseudo) return null;
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-indigo-100 via-white to-indigo-200 p-8 gap-8">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-indigo-100 via-white to-indigo-200 p-4 md:p-8 gap-4 md:gap-8">
 
       {/* Sidebar utilisateurs */}
-      <aside className="w-64 bg-white rounded-2xl shadow-lg p-6 flex flex-col">
+      <aside className="w-full md:w-64 bg-white rounded-2xl shadow-lg p-4 md:p-6 flex flex-col">
         <h2 className="text-xl font-bold mb-4 text-indigo-700 border-b border-indigo-200 pb-2">
           Utilisateurs en ligne
         </h2>
@@ -145,25 +145,25 @@ export default function Chat() {
 
       {/* Conteneur pour centrer le tchat */}
       <div className="flex justify-center flex-grow">
-        <main className="w-full max-w-4xl bg-white shadow-md rounded-2xl p-6 flex flex-col">
-          <header className="flex flex-wrap justify-between items-center mb-6 gap-4">
-            <h1 className="text-3xl font-extrabold text-indigo-700">Tchat en temps réel</h1>
-            <div className="flex gap-3 flex-wrap">
+        <main className="w-full max-w-4xl bg-white shadow-md rounded-2xl p-4 md:p-6 flex flex-col">
+          <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-indigo-700">Tchat en temps réel</h1>
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleLogout}
-                className="text-red-500 px-4 py-2 hover:text-red-700 transition font-semibold"
+                className="text-red-500 px-3 py-2 hover:text-red-700 transition font-semibold text-sm md:text-base"
               >
                 Déconnexion
               </button>
               <button
                 onClick={() => navigate('/video')}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold"
+                className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold text-sm md:text-base"
               >
                 Accéder à la visio
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-semibold"
+                className="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition font-semibold text-sm md:text-base"
               >
                 Retour à l'accueil
               </button>
@@ -171,12 +171,12 @@ export default function Chat() {
           </header>
 
           {!connected && (
-            <div className="bg-yellow-100 text-yellow-800 px-4 py-2 mb-4 rounded-lg text-center font-medium">
+            <div className="bg-yellow-100 text-yellow-800 px-4 py-2 mb-4 rounded-lg text-center font-medium text-sm">
               Connexion perdue, tentative de reconnexion...
             </div>
           )}
 
-          <section className="flex-grow overflow-y-auto rounded-lg bg-gray-50 border border-gray-200 p-5 mb-6">
+          <section className="flex-grow overflow-y-auto rounded-lg bg-gray-50 border border-gray-200 p-4 mb-6">
             {messages.length === 0 ? (
               <p className="text-gray-500 italic">Aucun message pour le moment</p>
             ) : (
@@ -190,11 +190,11 @@ export default function Chat() {
             <div ref={messagesEndRef} />
           </section>
 
-          <footer className="flex space-x-3">
+          <footer className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <input
               type="text"
               placeholder="Écris ton message..."
-              className="flex-grow border border-gray-300 rounded-lg px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="flex-grow border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={(e) => {
@@ -203,7 +203,7 @@ export default function Chat() {
             />
             <button
               onClick={sendMessage}
-              className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold"
+              className="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold text-sm"
             >
               Envoyer
             </button>
@@ -211,6 +211,8 @@ export default function Chat() {
         </main>
       </div>
     </div>
+
+
 
 
   );
