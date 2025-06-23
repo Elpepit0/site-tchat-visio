@@ -40,10 +40,10 @@ export default function Chat() {
     if (!pseudo) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const host = window.location.hostname;
+    const host = window.location.host;
     const socket = io(`${protocol}://${host}`, {
+      transports: ['websocket', 'polling'],
       withCredentials: true,
-      transports: ['websocket'],
     });
     socketRef.current = socket;
 

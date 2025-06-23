@@ -12,8 +12,9 @@ export function useVideoChat(roomId: string) {
   const [connected, setConnected] = useState(true);
 
   useEffect(() => {
-    socketRef.current = io('http://10.1.35.154:5000', {
-      transports: ['websocket', 'polling'],
+    socketRef.current = io(window.location.origin, {
+      transports: ['websocket'],
+      withCredentials: true,
     });
 
     socketRef.current.on('user-joined', () => {
