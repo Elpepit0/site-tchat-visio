@@ -20,7 +20,7 @@ app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
 app.config['SESSION_TYPE'] = 'filesystem'  # Les sessions sont stockées sur le disque.
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Empêche certaines attaques CSRF.
-app.config['SESSION_COOKIE_SECURE'] = False    # Peut être mis à True en production (HTTPS).
+app.config['SESSION_COOKIE_SECURE'] = True    # Peut être mis à True en production (HTTPS).
 
 # Configuration de la base de données avec SQLite.
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
@@ -150,7 +150,10 @@ def handle_connect():
 
 @socketio.on('set_username')
 def handle_set_username(username):
-    connected_users[request.sid] = username
+    connected_users[request.sid] = {
+        "username": username,
+        "connected_at": time.time()
+    }
     emit('user_count', list(connected_users.values()), broadcast=True)
 
 @socketio.on('disconnect')
@@ -158,7 +161,7 @@ def handle_disconnect():
     connected_users.pop(request.sid, None)
     emit('user_count', list(connected_users.values()), broadcast=True)
 
-
+MAX_MESSAGES = 100  # Nombre maximum de messages à conserver.
 
 @socketio.on('send_message')
 def handle_send_message(data):
@@ -173,6 +176,9 @@ def handle_send_message(data):
         'text': text
     }
     messages.append(message)
+    if len(messages) > MAX_MESSAGES:
+        messages.pop(0)
+        
     emit('new_message', message, broadcast=True)  # Envoie à tous les clients.
 
 
