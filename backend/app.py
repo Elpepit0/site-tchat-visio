@@ -17,7 +17,7 @@ app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = False  # True uniquement en prod HTTPS
+app.config['SESSION_COOKIE_SECURE'] = True  # True uniquement en prod HTTPS
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -25,9 +25,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 port = int(os.environ.get('PORT', 5000))
 
 # Attention : avec supports_credentials=True, il faut spécifier une origine précise (pas "*")
-CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
+CORS(app, origins="*", supports_credentials=True)
 
-socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000"], async_mode="eventlet", manage_session=True)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet", manage_session=True)
 
 db = SQLAlchemy(app)
 
