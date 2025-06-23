@@ -193,19 +193,18 @@ export default function Chat() {
             </div>
           )}
 
-          <section>
+          <section className="flex-grow overflow-y-auto rounded-lg bg-gray-50 border border-gray-200 p-4 mb-6">
             {messages.length === 0 ? (
-              <p>Aucun message pour le moment</p>
+              <p className="text-gray-500 italic">Aucun message pour le moment</p>
             ) : (
-              messages.map(({ id, pseudo: user, text }) => {
-                console.log('Message ID:', id);
-                return (
-                  <div key={id}>
-                    <strong>{user}:</strong> {text}
-                  </div>
-                );
-              })
+              messages.map(({ id, pseudo: user, text }) => (
+                <div key={id} className="mb-3">
+                  <span className="font-semibold text-indigo-600">{user}:</span>{' '}
+                  <span className="text-gray-800">{text}</span>
+                </div>
+              ))
             )}
+            <div ref={messagesEndRef} />
           </section>
 
 
