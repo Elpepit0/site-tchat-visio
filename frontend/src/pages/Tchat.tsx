@@ -8,6 +8,11 @@ interface Message {
   text: string;
 }
 
+interface User {
+  username: string;
+  connected_at: string;
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -16,7 +21,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
 
   const navigate = useNavigate();
 
@@ -47,16 +52,15 @@ export default function Chat() {
     });
     socketRef.current = socket;
 
-    // Gère l'historique des messages
-    socket.on('messages', (msgs: Message[]) => setMessages(msgs));
+    // Messages
+    socket.on('messages', (msgs: Message[]) => setMessages(msgs.slice(-100)));
     socket.on('new_message', (message: Message) => {
-      setMessages(prev => [...prev, message]);
+      setMessages(prev => [...prev.slice(-99), message]);
     });
 
-    // Gère la connexion au socket
+    // Connexion
     socket.on('connect', () => {
       setConnected(true);
-      // Après connexion, récupère l'utilisateur connecté via API REST
       fetch('/me', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
@@ -69,13 +73,13 @@ export default function Chat() {
     socket.on('disconnect', () => setConnected(false));
     socket.on('connect_error', () => setConnected(false));
 
-    // Mise à jour des utilisateurs en ligne
-    // En fonction de ton serveur, choisis 'user_list' ou 'user_count'
-    socket.on('user_list', (userList: string[]) => setOnlineUsers(userList));
-    socket.on('user_count', (users: string[]) => setOnlineUsers(users));
+    // Utilisateurs en ligne
+    socket.on('user_list', (userList: User[]) => setOnlineUsers(userList));
+    socket.on('user_count', (users: User[]) => setOnlineUsers(users));
 
     return () => {
       socket.off('messages');
+      socket.off('new_message');
       socket.off('connect');
       socket.off('disconnect');
       socket.off('connect_error');
@@ -84,8 +88,6 @@ export default function Chat() {
       socket.disconnect();
     };
   }, [pseudo]);
-
-
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -132,7 +134,7 @@ export default function Chat() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                 </span>
-                {user}
+                {user.username}
               </li>
             ))}
           </ul>
@@ -143,7 +145,7 @@ export default function Chat() {
         </div>
       </aside>
 
-      {/* Conteneur pour centrer le tchat */}
+      {/* Zone de chat */}
       <div className="flex justify-center flex-grow">
         <main className="w-full max-w-4xl bg-white shadow-md rounded-2xl p-4 md:p-6 flex flex-col">
           <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -211,9 +213,5 @@ export default function Chat() {
         </main>
       </div>
     </div>
-
-
-
-
   );
 }
