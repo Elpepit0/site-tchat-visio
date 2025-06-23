@@ -44,6 +44,11 @@ export default function Chat() {
     fetchUser();
   }, [navigate]);
 
+  // Filtrer les doublons de pseudo AVANT le return
+  const uniqueUsers = Array.from(
+    new Map(onlineUsers.map((u) => [u.username, u])).values()
+  );
+
   useEffect(() => {
     if (!pseudo) return;
 
@@ -82,6 +87,7 @@ export default function Chat() {
     socket.on('user_list', (userList: User[]) => setOnlineUsers(userList));
     socket.on('user_count', (users: User[]) => setOnlineUsers(users));
 
+    // Nettoyage complet à la fermeture du composant
     return () => {
       socket.off('messages');
       socket.off('new_message');
@@ -90,7 +96,7 @@ export default function Chat() {
       socket.off('connect_error');
       socket.off('user_list');
       socket.off('user_count');
-      socket.disconnect();
+      socket.disconnect(); // <-- Ajout important
       socketRef.current = null;
     };
   }, [pseudo]);
@@ -127,11 +133,11 @@ export default function Chat() {
           Utilisateurs en ligne
         </h2>
 
-        {onlineUsers.length === 0 ? (
+        {uniqueUsers.length === 0 ? (
           <p className="text-gray-400 italic">Aucun utilisateur en ligne</p>
         ) : (
           <ul className="flex-grow overflow-auto space-y-3">
-            {onlineUsers.map((user) => (
+            {uniqueUsers.map((user) => (
               <li
                 key={user.username}
                 className="flex items-center gap-3 text-green-600 font-medium ml-5 hover:text-green-800 transition duration-200 cursor-pointer"
