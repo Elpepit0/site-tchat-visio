@@ -10,7 +10,7 @@ interface Message {
 
 interface User {
   username: string;
-  connected_at: string;
+  connected_at: string; // ou number, selon ce que le serveur renvoie
 }
 
 export default function Chat() {
@@ -26,19 +26,22 @@ export default function Chat() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('/me', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
+    async function fetchUser() {
+      try {
+        const res = await fetch('/me', { credentials: 'include' });
+        const data = await res.json();
         if (data.username) {
           setPseudo(data.username);
         } else {
           navigate('/');
         }
-        setLoading(false);
-      })
-      .catch(() => {
+      } catch {
         navigate('/');
-      });
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUser();
   }, [navigate]);
 
   useEffect(() => {
@@ -52,22 +55,24 @@ export default function Chat() {
     });
     socketRef.current = socket;
 
-    // Messages
+    // Gestion des messages
     socket.on('messages', (msgs: Message[]) => setMessages(msgs.slice(-100)));
     socket.on('new_message', (message: Message) => {
       setMessages(prev => [...prev.slice(-99), message]);
     });
 
-    // Connexion
-    socket.on('connect', () => {
+    // Gestion connexion/déconnexion
+    socket.on('connect', async () => {
       setConnected(true);
-      fetch('/me', { credentials: 'include' })
-        .then(res => res.json())
-        .then(data => {
-          if (data.username) {
-            socket.emit('set_username', data.username);
-          }
-        });
+      try {
+        const res = await fetch('/me', { credentials: 'include' });
+        const data = await res.json();
+        if (data.username) {
+          socket.emit('set_username', data.username);
+        }
+      } catch {
+        // Rien de spécial, l’utilisateur sera déconnecté si besoin
+      }
     });
 
     socket.on('disconnect', () => setConnected(false));
@@ -86,6 +91,7 @@ export default function Chat() {
       socket.off('user_list');
       socket.off('user_count');
       socket.disconnect();
+      socketRef.current = null;
     };
   }, [pseudo]);
 
@@ -95,7 +101,7 @@ export default function Chat() {
 
   const sendMessage = () => {
     if (newMessage.trim() === '' || !socketRef.current) return;
-    socketRef.current.emit('send_message', { text: newMessage });
+    socketRef.current.emit('send_message', { text: newMessage.trim() });
     setNewMessage('');
   };
 
@@ -125,9 +131,9 @@ export default function Chat() {
           <p className="text-gray-400 italic">Aucun utilisateur en ligne</p>
         ) : (
           <ul className="flex-grow overflow-auto space-y-3">
-            {onlineUsers.map((user, index) => (
+            {onlineUsers.map((user) => (
               <li
-                key={index}
+                key={user.username}
                 className="flex items-center gap-3 text-green-600 font-medium ml-5 hover:text-green-800 transition duration-200 cursor-pointer"
               >
                 <span className="relative flex h-3 w-3">
