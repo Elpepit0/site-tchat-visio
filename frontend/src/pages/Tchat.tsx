@@ -52,6 +52,8 @@ export default function Chat() {
   useEffect(() => {
     if (!pseudo) return;
 
+    if (socketRef.current) return;
+    
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const host = window.location.host;
     const socket = io(`${protocol}://${host}`, {
