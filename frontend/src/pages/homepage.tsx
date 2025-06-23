@@ -106,7 +106,7 @@ export default function Home() {
                 : "Connecte-toi ou crée un compte pour commencer à discuter avec le monde entier."}
             </p>
 
-            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center md:justify-start">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center md:justify-start z-10">
               {pseudo ? (
                 <>
                   <button
@@ -190,7 +190,7 @@ export default function Home() {
       </div>
 
       {/* Vague décorative en bas */}
-      <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0]">
+      <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] z-0">
         <div className="relative w-[200%] h-[300px] animate-[waveSlide_10s_linear_infinite] flex">
           {[...Array(2)].map((_, i) => (
             <svg
