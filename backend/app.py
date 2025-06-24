@@ -29,13 +29,19 @@ port = int(os.environ.get('PORT', 5000))
 
 # Attention : avec supports_credentials=True, il faut spécifier une origine précise (pas "*")
 # Pour le développement, "*" peut être acceptable, mais pour la production, spécifiez l'URL de votre frontend.
-CORS(app, origins='*', supports_credentials=True)
+CORS(app, origins=[
+    "http://localhost:5173",
+    "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io"
+], supports_credentials=True)
 
 # Utiliser un verrou pour un accès thread-safe aux données partagées (messages, connected_users)
 # C'est important car les gestionnaires SocketIO peuvent s'exécuter simultanément.
 chat_lock = threading.Lock()
 
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode="eventlet", manage_session=True)
+socketio = SocketIO(app, cors_allowed_origins=[
+    "http://localhost:5173",
+    "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io"
+], async_mode="eventlet", manage_session=True)
 
 db = SQLAlchemy(app)
 
@@ -133,10 +139,9 @@ def active_visitors():
 
 # === CHAT WEBSOCKET ===
 messages = []
-# Stocker les utilisateurs connectés par leur ID de session (sid) pour une gestion plus facile
-# La valeur sera un dict : {"username": "...", "connected_at": ...}
+
 connected_users = {}
-# Mapper le nom d'utilisateur à une liste de SIDs pour cet utilisateur (s'il a plusieurs onglets ouverts)
+
 user_sids = {}
 
 MAX_MESSAGES = 100
