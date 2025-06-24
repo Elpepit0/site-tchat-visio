@@ -172,7 +172,6 @@ def add_message(message):
     r.rpush('messages', json.dumps(message))
     # Limite la taille de la liste
     r.ltrim('messages', -MAX_MESSAGES, -1)
-
 @socketio.on('connect')
 def handle_connect():
     username = session.get('username')
@@ -220,7 +219,12 @@ def handle_send_message(data):
 @socketio.on('delete_message')
 def handle_delete_message(data):
     message_id = data.get('id')
-    # Supprime le message de Redis (reconstruit la liste sans ce message)
+    if message_id == "all":
+        # Supprime tous les messages
+        r.delete('messages')
+        emit('messages', [], broadcast=True)
+        return
+    # Sinon, supprime un message précis
     messages = [m for m in get_messages() if m['id'] != message_id]
     r.delete('messages')
     for m in messages:
