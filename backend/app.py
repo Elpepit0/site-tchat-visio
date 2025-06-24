@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import time
 import uuid
 import os
+import threading # Importer threading pour les verrous
 
 # === CONFIGURATION DE L'APPLICATION FLASK ===
 app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
@@ -17,7 +18,9 @@ app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True  # True uniquement en prod HTTPS
+app.config['SESSION_COOKIE_SECURE'] = True  # Mettre à True en production avec HTTPS
+app.config['SESSION_PERMANENT'] = True # Rendre la session permanente
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7 # La session dure 7 jours
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -25,9 +28,14 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 port = int(os.environ.get('PORT', 5000))
 
 # Attention : avec supports_credentials=True, il faut spécifier une origine précise (pas "*")
-CORS(app, origins="*", supports_credentials=True)
+# Pour le développement, "*" peut être acceptable, mais pour la production, spécifiez l'URL de votre frontend.
+CORS(app, origins='*', supports_credentials=True)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet", manage_session=True)
+# Utiliser un verrou pour un accès thread-safe aux données partagées (messages, connected_users)
+# C'est important car les gestionnaires SocketIO peuvent s'exécuter simultanément.
+chat_lock = threading.Lock()
+
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode="eventlet", manage_session=True)
 
 db = SQLAlchemy(app)
 
@@ -40,7 +48,7 @@ class User(db.Model):
 with app.app_context():
     db.create_all()
 
-# === AUTH ROUTES ===
+# === ROUTES D'AUTHENTIFICATION ===
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
@@ -89,7 +97,7 @@ def logout():
 
 @app.route('/test-flask')
 def test_flask():
-    print("Route /test-flask called")
+    print("Route /test-flask appelée")
     return "Flask fonctionne"
 
 
@@ -123,23 +131,61 @@ def active_visitors():
     return jsonify({'active_visitors': len(active)})
 
 
-# === WEBSOCKET CHAT ===
+# === CHAT WEBSOCKET ===
 messages = []
+# Stocker les utilisateurs connectés par leur ID de session (sid) pour une gestion plus facile
+# La valeur sera un dict : {"username": "...", "connected_at": ...}
 connected_users = {}
+# Mapper le nom d'utilisateur à une liste de SIDs pour cet utilisateur (s'il a plusieurs onglets ouverts)
+user_sids = {}
 
 MAX_MESSAGES = 100
 
 @socketio.on('connect')
 def handle_connect():
-    username = session.get('username', f"Anonyme-{str(uuid.uuid4())[:4]}")
-    connected_users[request.sid] = {"username": username, "connected_at": time.time()}
-    emit('messages', messages)
-    emit('user_list', list(connected_users.values()), broadcast=True)
+    # Lorsqu'un client se connecte, Flask-SocketIO rend la session Flask disponible.
+    username = session.get('username')
+    if not username:
+        username = f"Anonyme-{str(uuid.uuid4())[:4]}"
+
+    with chat_lock:
+        connected_users[request.sid] = {"username": username, "connected_at": time.time()}
+        user_sids.setdefault(username, []).append(request.sid)
+        print(f"Utilisateur {username} connecté avec SID : {request.sid}. Total connectés : {len(connected_users)}")
+
+        emit('messages', messages)
+        # Émettre la liste des utilisateurs à tous les clients
+        emit('user_list', list(connected_users.values()), broadcast=True)
+
+@socketio.on('set_username')
+def handle_set_username(new_username):
+    with chat_lock:
+        old_username = connected_users.get(request.sid, {}).get("username")
+        if old_username and old_username != new_username:
+            if request.sid in user_sids.get(old_username, []):
+                user_sids[old_username].remove(request.sid)
+                if not user_sids[old_username]:
+                    del user_sids[old_username]
+
+        connected_users[request.sid]["username"] = new_username
+        user_sids.setdefault(new_username, []).append(request.sid)
+        print(f"SID {request.sid} a mis à jour le nom d'utilisateur vers {new_username}")
+        emit('user_list', list(connected_users.values()), broadcast=True)
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    connected_users.pop(request.sid, None)
-    emit('user_list', list(connected_users.values()), broadcast=True)
+    with chat_lock:
+        user_info = connected_users.pop(request.sid, None)
+        if user_info:
+            username = user_info["username"]
+            if request.sid in user_sids.get(username, []):
+                user_sids[username].remove(request.sid)
+                if not user_sids[username]:
+                    del user_sids[username]
+
+            print(f"Utilisateur {username} (SID : {request.sid}) déconnecté. Total connectés : {len(connected_users)}")
+            emit('user_list', list(connected_users.values()), broadcast=True)
 
 @socketio.on('send_message')
 def handle_send_message(data):
@@ -147,32 +193,33 @@ def handle_send_message(data):
     if not text or len(text) > 500:
         return
 
-    username = session.get('username', 'Anonyme')
+    username = connected_users.get(request.sid, {}).get("username", "Anonyme")
+
     message = {
         'id': str(uuid.uuid4()),
         'pseudo': username,
         'text': text
     }
-    messages.append(message)
-    if len(messages) > MAX_MESSAGES:
-        messages.pop(0)
+    with chat_lock:
+        messages.append(message)
+        if len(messages) > MAX_MESSAGES:
+            messages.pop(0)
 
     emit('new_message', message, broadcast=True)
 
 @socketio.on('delete_message')
 def handle_delete_message(data):
     message_id = data.get('id')
-    global messages
-    messages = [msg for msg in messages if msg['id'] != message_id]
+    with chat_lock:
+        global messages
+        messages = [msg for msg in messages if msg['id'] != message_id]
     emit('messages', messages, broadcast=True)
 
 
 # === WEBSOCKET POUR WEBRTC ===
-
 @socketio.on('join-room')
 def handle_join_room(room):
     join_room(room)
-    # Mieux vaut préciser l’utilisateur qui se connecte
     emit('user-connected', {'room': room, 'user': request.sid}, room=room)
 
 @socketio.on('offer')

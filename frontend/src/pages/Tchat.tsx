@@ -25,6 +25,7 @@ export default function Chat() {
 
   const navigate = useNavigate();
 
+  // Récupérer l'utilisateur au montage du composant
   useEffect(() => {
     async function fetchUser() {
       try {
@@ -44,85 +45,126 @@ export default function Chat() {
     fetchUser();
   }, [navigate]);
 
-  // Filtrer les doublons de pseudo AVANT le return
+  // Filtrer les utilisateurs uniques pour l'affichage
   const uniqueUsers = Array.from(
     new Map(onlineUsers.map((u) => [u.username, u])).values()
   );
 
+  // Connexion Socket.IO et gestion des événements
   useEffect(() => {
-    if (!pseudo) return;
+    if (!pseudo) return; // Se connecter uniquement si le pseudo est disponible
 
-    if (socketRef.current) return;
+    // Empêcher plusieurs instances de socket pour le même montage de composant
+    if (socketRef.current && socketRef.current.connected) {
+      console.log("Socket déjà connecté, on ne crée pas de nouvelle connexion.");
+      return;
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const host = window.location.host;
     const socket = io(`${protocol}://${host}`, {
       transports: ['websocket'],
       withCredentials: true,
+      // Ajouter des options de reconnexion pour une meilleure résilience
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5,
     });
     socketRef.current = socket;
 
-    // Gestion des messages
-    socket.on('messages', (msgs: Message[]) => setMessages(msgs.slice(-100)));
-    socket.on('new_message', (message: Message) => {
-      setMessages(prev => [...prev.slice(-99), message]);
+    // Écouteurs d'événements
+    socket.on('messages', (msgs: Message[]) => {
+      console.log("Messages initiaux reçus :", msgs.length);
+      setMessages(msgs.slice(-100));
     });
 
-    // Gestion connexion/déconnexion
+    socket.on('new_message', (message: Message) => {
+      console.log("Nouveau message reçu :", message.text);
+      setMessages(prev => {
+        // S'assurer de ne pas dépasser 100 messages et ajouter le nouveau
+        const newMsgs = [...prev.slice(-99), message];
+        return newMsgs;
+      });
+    });
+
     socket.on('connect', async () => {
+      console.log("Socket connecté !");
       setConnected(true);
-      try {
-        const res = await fetch('/me', { credentials: 'include' });
-        const data = await res.json();
-        if (data.username) {
-          socket.emit('set_username', data.username);
-        }
-      } catch {
-        // Rien de spécial, l’utilisateur sera déconnecté si besoin
+      // Ré-émettre le nom d'utilisateur lors de la reconnexion
+      if (pseudo) {
+        socket.emit('set_username', pseudo);
       }
     });
 
-    socket.on('disconnect', () => setConnected(false));
-    socket.on('connect_error', () => setConnected(false));
+    socket.on('disconnect', (reason) => {
+      console.log("Socket déconnecté :", reason);
+      setConnected(false);
+    });
 
-    // Utilisateurs en ligne
-    socket.on('user_list', (userList: User[]) => setOnlineUsers(userList));
-    socket.on('user_count', (users: User[]) => setOnlineUsers(users));
+    socket.on('connect_error', (error) => {
+      console.error("Erreur de connexion Socket :", error);
+      setConnected(false);
+    });
 
-    // Nettoyage complet à la fermeture du composant
+    socket.on('user_list', (userList: User[]) => {
+      console.log("Liste d'utilisateurs reçue :", userList.length);
+      setOnlineUsers(userList);
+    });
+
+    // Fonction de nettoyage
     return () => {
-      socket.off('messages');
-      socket.off('new_message');
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('connect_error');
-      socket.off('user_list');
-      socket.off('user_count');
-      socket.removeAllListeners(); // <-- Nettoyage complet
-      socket.disconnect(); // <-- Ajout important
-      socketRef.current = null;
+      console.log("Nettoyage de la connexion socket...");
+      if (socketRef.current) {
+        socketRef.current.off('messages');
+        socketRef.current.off('new_message');
+        socketRef.current.off('connect');
+        socketRef.current.off('disconnect');
+        socketRef.current.off('connect_error');
+        socketRef.current.off('user_list');
+       
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect(); 
+        socketRef.current = null; 
+        console.log("Socket nettoyé.");
+      }
     };
-  }, [pseudo]);
+  }, [pseudo]); 
 
+  // Faire défiler vers le bas lors de nouveaux messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Gestionnaire d'envoi de message
   const sendMessage = () => {
-    if (newMessage.trim() === '' || !socketRef.current) return;
+    if (newMessage.trim() === '' || !socketRef.current || !socketRef.current.connected) {
+      console.warn("Impossible d'envoyer le message : vide ou socket non connecté.");
+      return;
+    }
     socketRef.current.emit('send_message', { text: newMessage.trim() });
     setNewMessage('');
   };
 
+  // Gestionnaire de déconnexion
   const handleLogout = () => {
     fetch('/logout', {
       method: 'POST',
       credentials: 'include',
     }).finally(() => {
       setPseudo(null);
+      // Effacer les états lors de la déconnexion
+      setMessages([]);
+      setOnlineUsers([]);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
       navigate('/');
     });
   };
+
 
   if (loading) return <div>Chargement...</div>;
   if (!pseudo) return null;
