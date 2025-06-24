@@ -143,7 +143,7 @@ def active_visitors():
 
 # === CHAT WEBSOCKET SYNCHRONISÉ AVEC REDIS ===
 
-MAX_MESSAGES = 100
+MAX_MESSAGES = 500
 
 def get_connected_users():
     """Retourne la liste des utilisateurs connectés (valeurs du hash Redis)."""
