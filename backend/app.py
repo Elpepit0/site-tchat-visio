@@ -40,14 +40,14 @@ CORS(app, origins=[
 # Utiliser un verrou pour un accès thread-safe aux données partagées (messages, connected_users)
 # C'est important car les gestionnaires SocketIO peuvent s'exécuter simultanément.
 chat_lock = threading.Lock()
-
+redis_url = os.getenv("REDIS_URL")
 socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:5173",
     "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io",
     "http://localhost:5000",
     "http://localhost:9000",
     "https://tchat-visio.cleverapps.io",
-], async_mode="eventlet", manage_session=True)
+], async_mode="eventlet", manage_session=True, message_queue=redis_url)
 
 db = SQLAlchemy(app)
 
