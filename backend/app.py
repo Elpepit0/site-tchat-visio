@@ -131,18 +131,9 @@ MAX_MESSAGES = 100
 
 @socketio.on('connect')
 def handle_connect():
-    connected_users[request.sid] = {"username": "Anonyme", "connected_at": time.time()}
+    username = session.get('username', f"Anonyme-{str(uuid.uuid4())[:4]}")
+    connected_users[request.sid] = {"username": username, "connected_at": time.time()}
     emit('messages', messages)
-    # Émettre la liste actuelle des utilisateurs connectés (liste d’objets cohérents)
-    emit('user_list', list(connected_users.values()), broadcast=True)
-
-@socketio.on('set_username')
-def handle_set_username(username):
-    if request.sid in connected_users:
-        connected_users[request.sid]["username"] = username
-        connected_users[request.sid]["connected_at"] = time.time()
-    else:
-        connected_users[request.sid] = {"username": username, "connected_at": time.time()}
     emit('user_list', list(connected_users.values()), broadcast=True)
 
 @socketio.on('disconnect')
