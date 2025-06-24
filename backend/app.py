@@ -33,6 +33,8 @@ CORS(app, origins=[
     "http://localhost:5173",
     "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io",
     "http://localhost:5000",
+    "http://localhost:9000",
+    "https://tchat-visio.cleverapps.io",
 ], supports_credentials=True)
 
 # Utiliser un verrou pour un accès thread-safe aux données partagées (messages, connected_users)
@@ -43,6 +45,8 @@ socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:5173",
     "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io",
     "http://localhost:5000",
+    "http://localhost:9000",
+    "https://tchat-visio.cleverapps.io",
 ], async_mode="eventlet", manage_session=True)
 
 db = SQLAlchemy(app)
