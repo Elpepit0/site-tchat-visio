@@ -164,7 +164,7 @@ def handle_connect():
         user_sids.setdefault(username, []).append(request.sid)
         print(f"Utilisateur {username} connecté avec SID : {request.sid}. Total connectés : {len(connected_users)}")
 
-        emit('messages', messages)
+        emit('messages', messages [:MAX_MESSAGES], broadcast=True)  # Émettre les derniers messages au nouvel utilisateur
         # Émettre la liste des utilisateurs à tous les clients
         emit('user_list', list(connected_users.values()), broadcast=True)
 
