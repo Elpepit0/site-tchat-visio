@@ -31,7 +31,8 @@ port = int(os.environ.get('PORT', 5000))
 # Pour le développement, "*" peut être acceptable, mais pour la production, spécifiez l'URL de votre frontend.
 CORS(app, origins=[
     "http://localhost:5173",
-    "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io"
+    "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io",
+    "http://localhost:5000",
 ], supports_credentials=True)
 
 # Utiliser un verrou pour un accès thread-safe aux données partagées (messages, connected_users)
@@ -40,7 +41,8 @@ chat_lock = threading.Lock()
 
 socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:5173",
-    "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io"
+    "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io",
+    "http://localhost:5000",
 ], async_mode="eventlet", manage_session=True)
 
 db = SQLAlchemy(app)
