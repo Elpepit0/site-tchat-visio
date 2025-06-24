@@ -27,7 +27,7 @@ port = int(os.environ.get('PORT', 5000))
 # Attention : avec supports_credentials=True, il faut spécifier une origine précise (pas "*")
 CORS(app, origins="*", supports_credentials=True)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet", manage_session=True)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet", manage_session=True, message_queue='redis://')
 
 db = SQLAlchemy(app)
 
