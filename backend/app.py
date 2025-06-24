@@ -7,10 +7,11 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
+import redis
 import time
 import uuid
 import os
-import threading # Importer threading pour les verrous
+import json
 
 # === CONFIGURATION DE L'APPLICATION FLASK ===
 app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
@@ -18,17 +19,15 @@ app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True  # Mettre à True en production avec HTTPS
-app.config['SESSION_PERMANENT'] = True # Rendre la session permanente
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7 # La session dure 7 jours
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 port = int(os.environ.get('PORT', 5000))
 
-# Attention : avec supports_credentials=True, il faut spécifier une origine précise (pas "*")
-# Pour le développement, "*" peut être acceptable, mais pour la production, spécifiez l'URL de votre frontend.
 CORS(app, origins=[
     "http://localhost:5173",
     "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io",
@@ -37,17 +36,17 @@ CORS(app, origins=[
     "https://tchat-visio.cleverapps.io",
 ], supports_credentials=True)
 
-# Utiliser un verrou pour un accès thread-safe aux données partagées (messages, connected_users)
-# C'est important car les gestionnaires SocketIO peuvent s'exécuter simultanément.
-chat_lock = threading.Lock()
-redis_url = os.getenv("REDIS_URL")
+# Redis config (utilise l'URL Clever Cloud en prod)
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+
 socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:5173",
     "https://app-f78700db-fb68-49c7-ab1b-b4580a6d2cf7.cleverapps.io",
     "http://localhost:5000",
     "http://localhost:9000",
     "https://tchat-visio.cleverapps.io",
-], async_mode="eventlet", manage_session=True, message_queue=redis_url)
+], async_mode="eventlet", manage_session=True, message_queue=REDIS_URL)
 
 db = SQLAlchemy(app)
 
@@ -142,90 +141,91 @@ def active_visitors():
     active = [sid for sid, last_ping in visitors.items() if now - last_ping < 2]
     return jsonify({'active_visitors': len(active)})
 
-
-# === CHAT WEBSOCKET ===
-messages = []
-
-connected_users = {}
-
-user_sids = {}
+# === CHAT WEBSOCKET SYNCHRONISÉ AVEC REDIS ===
 
 MAX_MESSAGES = 100
 
+def get_connected_users():
+    """Retourne la liste des utilisateurs connectés (valeurs du hash Redis)."""
+    users = r.hvals('connected_users')
+    return [json.loads(u) for u in users]
+
+def add_connected_user(sid, username):
+    user_info = {"username": username, "connected_at": time.time(), "sid": sid}
+    r.hset('connected_users', sid, json.dumps(user_info))
+
+def remove_connected_user(sid):
+    r.hdel('connected_users', sid)
+
+def update_username(sid, new_username):
+    user_json = r.hget('connected_users', sid)
+    if user_json:
+        user_info = json.loads(user_json)
+        user_info["username"] = new_username
+        user_info["connected_at"] = time.time()
+        r.hset('connected_users', sid, json.dumps(user_info))
+
+def get_messages():
+    return [json.loads(m) for m in r.lrange('messages', -MAX_MESSAGES, -1)]
+
+def add_message(message):
+    r.rpush('messages', json.dumps(message))
+    # Limite la taille de la liste
+    r.ltrim('messages', -MAX_MESSAGES, -1)
+
 @socketio.on('connect')
 def handle_connect():
-    # Lorsqu'un client se connecte, Flask-SocketIO rend la session Flask disponible.
     username = session.get('username')
     if not username:
         username = f"Anonyme-{str(uuid.uuid4())[:4]}"
-
-    with chat_lock:
-        connected_users[request.sid] = {"username": username, "connected_at": time.time()}
-        user_sids.setdefault(username, []).append(request.sid)
-        print(f"Utilisateur {username} connecté avec SID : {request.sid}. Total connectés : {len(connected_users)}")
-
-        emit('messages', messages [:MAX_MESSAGES], broadcast=True)  # Émettre les derniers messages au nouvel utilisateur
-        # Émettre la liste des utilisateurs à tous les clients
-        emit('user_list', list(connected_users.values()), broadcast=True)
+    add_connected_user(request.sid, username)
+    print(f"Utilisateur {username} connecté avec SID : {request.sid}.")
+    # Envoie les derniers messages au nouvel utilisateur
+    emit('messages', get_messages())
+    # Met à jour la liste des utilisateurs pour tous
+    emit('user_list', get_connected_users(), broadcast=True)
 
 @socketio.on('set_username')
 def handle_set_username(new_username):
-    with chat_lock:
-        old_username = connected_users.get(request.sid, {}).get("username")
-        if old_username and old_username != new_username:
-            if request.sid in user_sids.get(old_username, []):
-                user_sids[old_username].remove(request.sid)
-                if not user_sids[old_username]:
-                    del user_sids[old_username]
-
-        connected_users[request.sid]["username"] = new_username
-        user_sids.setdefault(new_username, []).append(request.sid)
-        print(f"SID {request.sid} a mis à jour le nom d'utilisateur vers {new_username}")
-        emit('user_list', list(connected_users.values()), broadcast=True)
-
+    update_username(request.sid, new_username)
+    print(f"SID {request.sid} a mis à jour le nom d'utilisateur vers {new_username}")
+    emit('user_list', get_connected_users(), broadcast=True)
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    with chat_lock:
-        user_info = connected_users.pop(request.sid, None)
-        if user_info:
-            username = user_info["username"]
-            if request.sid in user_sids.get(username, []):
-                user_sids[username].remove(request.sid)
-                if not user_sids[username]:
-                    del user_sids[username]
-
-            print(f"Utilisateur {username} (SID : {request.sid}) déconnecté. Total connectés : {len(connected_users)}")
-            emit('user_list', list(connected_users.values()), broadcast=True)
+    user_json = r.hget('connected_users', request.sid)
+    if user_json:
+        username = json.loads(user_json)["username"]
+        print(f"Utilisateur {username} (SID : {request.sid}) déconnecté.")
+    remove_connected_user(request.sid)
+    emit('user_list', get_connected_users(), broadcast=True)
 
 @socketio.on('send_message')
 def handle_send_message(data):
     text = data.get('text', '').strip()
     if not text or len(text) > 500:
         return
-
-    username = connected_users.get(request.sid, {}).get("username", "Anonyme")
-
+    user_json = r.hget('connected_users', request.sid)
+    username = "Anonyme"
+    if user_json:
+        username = json.loads(user_json)["username"]
     message = {
         'id': str(uuid.uuid4()),
         'pseudo': username,
         'text': text
     }
-    with chat_lock:
-        messages.append(message)
-        if len(messages) > MAX_MESSAGES:
-            messages.pop(0)
-
+    add_message(message)
     emit('new_message', message, broadcast=True)
 
 @socketio.on('delete_message')
 def handle_delete_message(data):
     message_id = data.get('id')
-    with chat_lock:
-        global messages
-        messages = [msg for msg in messages if msg['id'] != message_id]
+    # Supprime le message de Redis (reconstruit la liste sans ce message)
+    messages = [m for m in get_messages() if m['id'] != message_id]
+    r.delete('messages')
+    for m in messages:
+        r.rpush('messages', json.dumps(m))
     emit('messages', messages, broadcast=True)
-
 
 # === WEBSOCKET POUR WEBRTC ===
 @socketio.on('join-room')
@@ -251,11 +251,9 @@ def handle_ice(data):
     if room:
         emit('ice-candidate', data, room=room, include_self=False)
 
-
 @app.errorhandler(404)
 def not_found(e):
     return send_from_directory(app.static_folder, 'index.html')
-
 
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':
