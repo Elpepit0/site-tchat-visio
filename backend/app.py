@@ -35,6 +35,7 @@ CORS(app, origins=[
     "http://localhost:5000",
     "http://localhost:9000",
     "https://tchat-visio.cleverapps.io",
+    "null",
 ], supports_credentials=True)
 
 # Redis config (utilise l'URL Clever Cloud en prod)
@@ -47,6 +48,7 @@ socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:5000",
     "http://localhost:9000",
     "https://tchat-visio.cleverapps.io",
+    "null",
 ], async_mode="eventlet", manage_session=True, message_queue=REDIS_URL)
 
 db = SQLAlchemy(app)
