@@ -65,20 +65,18 @@ export default function Chat() {
     const socket = io(`${protocol}://${host}`, {
       transports: ['websocket'],
       withCredentials: true,
-      // Ajouter des options de reconnexion pour une meilleure résilience
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      randomizationFactor: 0.5,
     });
     socketRef.current = socket;
 
     // Écouteurs d'événements
     socket.on('messages', (msgs: Message[]) => {
       console.log("Messages initiaux reçus :", msgs.length);
+      msgs.forEach((msg) => {
+        console.log("Message from", msg.id);
+      });
       setMessages(msgs.slice(-100));
     });
+
 
     socket.on('new_message', (message: Message) => {
       console.log("Nouveau message reçu :", message.text);
@@ -91,6 +89,7 @@ export default function Chat() {
 
     socket.on('connect', async () => {
       console.log("Socket connecté !");
+      console.log(`[Socket] New connection: ${socket.id}`);
       setConnected(true);
       // Ré-émettre le nom d'utilisateur lors de la reconnexion
       if (pseudo) {
@@ -205,29 +204,55 @@ export default function Chat() {
       {/* Zone de chat */}
       <div className="flex justify-center flex-grow">
         <main className="w-full max-w-4xl bg-white shadow-md rounded-2xl p-4 md:p-6 flex flex-col">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h1 className="text-2xl md:text-3xl font-extrabold text-indigo-700">Tchat en temps réel</h1>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleLogout}
-                className="text-red-500 px-3 py-2 hover:text-red-700 transition font-semibold text-sm md:text-base"
+                className="flex items-center gap-1 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 transition font-semibold text-sm md:text-base"
+                title="Se déconnecter"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                </svg>
                 Déconnexion
               </button>
               <button
-                onClick={() => navigate('/video')}
-                className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold text-sm md:text-base"
+                onClick={() => {
+                  setMessages([]);
+                  if (socketRef.current)
+                    socketRef.current.emit('delete_message', { id: "all" });
+                }}
+                className="flex items-center gap-1 bg-red-100 text-red-600 px-3 py-2 rounded-lg hover:bg-red-200 transition font-semibold text-sm md:text-base"
+                title="Vider le chat"
               >
-                Accéder à la visio
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                </svg>
+                Corbeille
+              </button>
+              <button
+                onClick={() => navigate('/video')}
+                className="flex items-center gap-1 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold text-sm md:text-base"
+                title="Accéder à la visio"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A2 2 0 0122 9.618v4.764a2 2 0 01-2.447 1.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                </svg>
+                Visio
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition font-semibold text-sm md:text-base"
+                className="flex items-center gap-1 bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition font-semibold text-sm md:text-base"
+                title="Retour à l'accueil"
               >
-                Retour à l'accueil
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6" />
+                </svg>
+                Accueil
               </button>
             </div>
-          </header>
+            </header>
 
           {!connected && (
             <div className="bg-yellow-100 text-yellow-800 px-4 py-2 mb-4 rounded-lg text-center font-medium text-sm">
@@ -235,7 +260,10 @@ export default function Chat() {
             </div>
           )}
 
-          <section className="flex-grow overflow-y-auto rounded-lg bg-gray-50 border border-gray-200 p-4 mb-6">
+          <section
+            className="flex-grow overflow-y-auto rounded-lg bg-gray-50 border border-gray-200 p-4 mb-6"
+            style={{ maxHeight: '75vh' }} // Ajoute cette ligne pour limiter la hauteur
+          >
             {messages.length === 0 ? (
               <p className="text-gray-500 italic">Aucun message pour le moment</p>
             ) : (

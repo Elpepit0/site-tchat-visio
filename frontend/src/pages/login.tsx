@@ -45,8 +45,12 @@ function Login() {
           />
           <button
             onClick={handleLogin}
-            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition"
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition"
+            aria-label="Se connecter"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-7-7l7 7-7 7" />
+            </svg>
             Se connecter
           </button>
         </div>
@@ -57,7 +61,10 @@ function Login() {
 
         <p className="text-center mt-6 text-gray-600">
           Pas encore inscrit ?{' '}
-          <a href="/register" className="text-blue-500 hover:underline">
+          <a href="/register" className="inline-flex items-center gap-1 text-blue-500 hover:underline">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             S'inscrire
           </a>
         </p>

@@ -54,8 +54,12 @@ function Register() {
           />
           <button
             onClick={handleRegister}
-            className="w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700 transition"
+            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700 transition"
+            aria-label="S'inscrire"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             S'inscrire
           </button>
         </div>
@@ -66,7 +70,10 @@ function Register() {
 
         <p className="text-center mt-6 text-gray-600">
           Déjà un compte ?{' '}
-          <a href="/" className="text-green-500 hover:underline">
+          <a href="/" className="inline-flex items-center gap-1 text-green-500 hover:underline">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-7-7l7 7-7 7" />
+            </svg>
             Se connecter
           </a>
         </p>

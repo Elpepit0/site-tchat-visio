@@ -111,21 +111,33 @@ export default function Home() {
                 <>
                   <button
                     onClick={() => navigate('/chat')}
-                    className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-indigo-700 transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-indigo-700 transition-all duration-200"
+                    title="Accéder au Tchat"
                   >
-                    💬 Accéder au Tchat
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V10a2 2 0 012-2h2m4-4v4m0 0l-2-2m2 2l2-2" />
+                    </svg>
+                    Accéder au Tchat
                   </button>
                   <button
                     onClick={() => navigate('/video')}
-                    className="px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-blue-700 transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-blue-700 transition-all duration-200"
+                    title="Accéder à la Visio"
                   >
-                    📹 Accéder à la Visio
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A2 2 0 0122 9.618v4.764a2 2 0 01-2.447 1.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                    </svg>
+                    Accéder à la Visio
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="px-6 py-3 rounded-xl border border-red-500 text-red-600 font-semibold hover:bg-red-50 hover:shadow-sm transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl border border-red-500 text-red-600 font-semibold hover:bg-red-50 hover:shadow-sm transition-all duration-200"
+                    title="Déconnexion"
                   >
-                    🚪 Déconnexion
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                    </svg>
+                    Déconnexion
                   </button>
                   {/* Indicateur de connexion */}
                   <div className="flex items-center space-x-2 mt-4 animate-fade-in w-full sm:w-auto">
@@ -142,15 +154,24 @@ export default function Home() {
                 <>
                   <button
                     onClick={() => navigate('/login')}
-                    className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-indigo-700 transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm hover:shadow-lg hover:bg-indigo-700 transition-all duration-200"
+                    title="Connexion"
                   >
-                    🔐 Connexion
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-7-7l7 7-7 7" />
+                    </svg>
+                    Connexion
                   </button>
+
                   <button
                     onClick={() => navigate('/register')}
-                    className="px-6 py-3 rounded-xl border border-gray-400 text-gray-700 font-semibold hover:bg-gray-100 hover:shadow-sm transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl border border-gray-400 text-gray-700 font-semibold hover:bg-gray-100 hover:shadow-sm transition-all duration-200"
+                    title="Créer un compte"
                   >
-                    ✍️ Créer un compte
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Créer un compte
                   </button>
                   {/* Indicateur de connexion */}
                   <div className="flex items-center space-x-2 mt-4 animate-fade-in w-full sm:w-auto">
