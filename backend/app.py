@@ -35,7 +35,6 @@ CORS(app, origins=[
     "http://localhost:5000",
     "http://localhost:9000",
     "https://tchat-visio.cleverapps.io",
-    None,
 ], supports_credentials=True)
 
 # Redis config (utilise l'URL Clever Cloud en prod)
@@ -48,7 +47,6 @@ socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:5000",
     "http://localhost:9000",
     "https://tchat-visio.cleverapps.io",
-    None,
 ], async_mode="eventlet", manage_session=True, message_queue=REDIS_URL)
 
 db = SQLAlchemy(app)
@@ -265,6 +263,12 @@ def not_found(e):
 @app.before_request
 def log_origin():
     print("Origin:", request.headers.get("Origin"))
+
+@app.after_request
+def allow_cors_for_native_clients(response):
+    if request.headers.get("Origin") is None:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':
