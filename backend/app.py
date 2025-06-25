@@ -24,7 +24,7 @@ app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-    'POSTGRESQL_ADDON_URI',
+    'postgresql://uq7xkhav1wn7wvjpvivh:iUo75NftjJPDK8opaITvrJ4YPsRDXo@bmmnewpodxpug01sbfgh-postgresql.services.clever-cloud.com:50013/bmmnewpodxpug01sbfgh',
 )
 
 
