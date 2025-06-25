@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import AvatarChanger from '../components/avatarChanger';
+import EmojiInput from '../components/emojiinput';
+import data from "@emoji-mart/data";
 
 interface Message {
   id: string;
@@ -10,7 +13,8 @@ interface Message {
 
 interface User {
   username: string;
-  connected_at: string; // ou number, selon ce que le serveur renvoie
+  connected_at: string;
+  avatar_url?: string; // <-- Ajout
 }
 
 export default function Chat() {
@@ -19,6 +23,7 @@ export default function Chat() {
   const [connected, setConnected] = useState(true);
   const [pseudo, setPseudo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [typingUser, setTypingUser] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
@@ -112,6 +117,13 @@ export default function Chat() {
       setOnlineUsers(userList);
     });
 
+    socket.on('typing', (username: string) => {
+      setTypingUser(username);
+      setTimeout(() => {
+        setTypingUser(null);
+      }, 3000); // Effacer l'indicateur de saisie après 3 secondes
+    });
+
     // Fonction de nettoyage
     return () => {
       console.log("Nettoyage de la connexion socket...");
@@ -122,7 +134,8 @@ export default function Chat() {
         socketRef.current.off('disconnect');
         socketRef.current.off('connect_error');
         socketRef.current.off('user_list');
-       
+        socketRef.current.off('typing');
+        
         socketRef.current.removeAllListeners();
         socketRef.current.disconnect(); 
         socketRef.current = null; 
@@ -142,7 +155,8 @@ export default function Chat() {
       console.warn("Impossible d'envoyer le message : vide ou socket non connecté.");
       return;
     }
-    socketRef.current.emit('send_message', { text: newMessage.trim() });
+    const textWithEmojis = replaceEmojis(newMessage.trim());
+    socketRef.current.emit('send_message', { text: textWithEmojis });
     setNewMessage('');
   };
 
@@ -164,6 +178,55 @@ export default function Chat() {
     });
   };
 
+  // Ajoute cette fonction dans ton composant
+  const refreshUsers = () => {
+    if (socketRef.current) {
+      socketRef.current.emit('get_user_list');
+    }
+  };
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    const handler = (data: { pseudo: string }) => {
+      if (data.pseudo !== pseudo) {
+        setTypingUser(data.pseudo);
+        setTimeout(() => setTypingUser(null), 5000);
+      }
+    };
+
+    socketRef.current.on('user_typing', handler);
+
+    return () => {
+      socketRef.current?.off('user_typing', handler);
+    };
+  }, [pseudo]);
+
+  // Fonction de remplacement custom :
+  function replaceEmojis(text: string) {
+    return text.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code) => {
+      const q = code.toLowerCase();
+      // @ts-ignore
+      const emojis = Object.values(data.emojis) as any[];
+
+      // 1. Cherche un id exact
+      const exact = emojis.find(e => e.id === q);
+      if (exact) {
+        return exact.skins ? exact.skins[0].native : exact.native || match;
+      }
+
+      // 2. Sinon, cherche dans les mots-clés (en contient)
+      const keyword = emojis.find(e =>
+        e.keywords && e.keywords.some((k: string) => k === q)
+      );
+      if (keyword) {
+        return keyword.skins ? keyword.skins[0].native : keyword.native || match;
+      }
+
+      // 3. Sinon, ne remplace pas
+      return match;
+    });
+  }
 
   if (loading) return <div>Chargement...</div>;
   if (!pseudo) return null;
@@ -173,10 +236,19 @@ export default function Chat() {
 
       {/* Sidebar utilisateurs */}
       <aside className="w-full md:w-64 bg-white rounded-2xl shadow-lg p-4 md:p-6 flex flex-col">
+        {/* Bloc avatar séparé */}
+        <div className="mb-6 pb-6 border-b border-indigo-200">
+          <h3 className="text-lg font-semibold text-indigo-600 mb-3 text-center">Mon avatar</h3>
+          <AvatarChanger
+            currentAvatar={uniqueUsers.find(u => u.username === pseudo)?.avatar_url}
+            onAvatarChange={refreshUsers}
+          />
+        </div>
+
+        {/* Liste des utilisateurs */}
         <h2 className="text-xl font-bold mb-4 text-indigo-700 border-b border-indigo-200 pb-2">
           Utilisateurs en ligne
         </h2>
-
         {uniqueUsers.length === 0 ? (
           <p className="text-gray-400 italic">Aucun utilisateur en ligne</p>
         ) : (
@@ -186,6 +258,11 @@ export default function Chat() {
                 key={user.username}
                 className="flex items-center gap-3 text-green-600 font-medium ml-5 hover:text-green-800 transition duration-200 cursor-pointer"
               >
+                <img
+                  src={user.avatar_url || '/default-avatar.jpg'}
+                  alt="avatar"
+                  className="w-8 h-8 rounded-full border"
+                />
                 <span className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
@@ -267,27 +344,37 @@ export default function Chat() {
             {messages.length === 0 ? (
               <p className="text-gray-500 italic">Aucun message pour le moment</p>
             ) : (
-              messages.map(({ id, pseudo: user, text }) => (
-                <div key={id} className="mb-3">
-                  <span className="font-semibold text-indigo-600">{user}:</span>{' '}
-                  <span className="text-gray-800">{text}</span>
-                </div>
-              ))
+              messages.map(({ id, pseudo: user, text }) => {
+                const userObj = uniqueUsers.find(u => u.username === user);
+                return (
+                  <div key={id} className="mb-3 flex items-center gap-3">
+                    <img
+                      src={userObj?.avatar_url || '/default-avatar.jpg'}
+                      alt="avatar"
+                      className="w-8 h-8 rounded-full border"
+                    />
+                    <div>
+                      <span className="font-semibold text-indigo-600">{user}</span>{' '}
+                      <span className="text-gray-800">{replaceEmojis(text)}</span>
+                    </div>
+                  </div>
+                );
+              })
             )}
             <div ref={messagesEndRef} />
           </section>
 
+          {typingUser && (
+            <div className="text-sm text-gray-500 italic mb-2">
+              {typingUser} est en train d’écrire...
+            </div>
+          )}
 
           <footer className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-            <input
-              type="text"
-              placeholder="Écris ton message..."
-              className="flex-grow border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+            <EmojiInput
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') sendMessage();
-              }}
+              onChange={setNewMessage}
+              onEnter={sendMessage}
             />
             <button
               onClick={sendMessage}

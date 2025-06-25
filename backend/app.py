@@ -56,6 +56,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    avatar_url = db.Column(db.String(256), nullable=True)
 
 with app.app_context():
     db.create_all()
@@ -149,7 +150,16 @@ MAX_MESSAGES = 500
 def get_connected_users():
     """Retourne la liste des utilisateurs connectés (valeurs du hash Redis)."""
     users = r.hvals('connected_users')
-    return [json.loads(u) for u in users]
+    result = []
+    for u in users:
+        user_info = json.loads(u)
+        # Cherche l'avatar dans la base
+        db_user = User.query.filter_by(username=user_info["username"]).first()
+        avatar_url = db_user.avatar_url if db_user else None
+        user_info["avatar_url"] = avatar_url
+        result.append(user_info)
+    return result
+
 
 def add_connected_user(sid, username):
     user_info = {"username": username, "connected_at": time.time(), "sid": sid}
@@ -232,6 +242,11 @@ def handle_delete_message(data):
         r.rpush('messages', json.dumps(m))
     emit('messages', messages, broadcast=True)
 
+@socketio.on('typing')
+def handle_typing(data):
+    pseudo = data.get('pseudo')
+    emit('user_typing', {'pseudo': pseudo}, broadcast=True, include_self=False)
+
 # === WEBSOCKET POUR WEBRTC ===
 @socketio.on('join-room')
 def handle_join_room(room):
@@ -269,6 +284,19 @@ def allow_cors_for_native_clients(response):
     if request.headers.get("Origin") is None:
         response.headers["Access-Control-Allow-Origin"] = "*"
     return response
+
+@app.route('/set_avatar', methods=['POST'])
+def set_avatar():
+    if 'username' not in session:
+        return jsonify({'error': 'Non connecté.'}), 401
+    data = request.json
+    avatar_url = data.get('avatar_url')
+    user = User.query.filter_by(username=session['username']).first()
+    if user:
+        user.avatar_url = avatar_url
+        db.session.commit()
+        return jsonify({'message': 'Avatar mis à jour !'})
+    return jsonify({'error': 'Utilisateur non trouvé.'}), 404
 
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':
