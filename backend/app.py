@@ -23,8 +23,10 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'POSTGRESQL_ADDON_URI',
+)
+
 
 port = int(os.environ.get('PORT', 5000))
 
