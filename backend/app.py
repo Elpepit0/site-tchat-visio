@@ -262,6 +262,10 @@ def handle_ice(data):
 def not_found(e):
     return send_from_directory(app.static_folder, 'index.html')
 
+@app.before_request
+def log_origin():
+    print("Origin:", request.headers.get("Origin"))
+
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':
     print("Eventlet utilisé :", socketio.async_mode)
