@@ -253,7 +253,10 @@ export default function Chat() {
                     alt="avatar"
                     className="w-7 h-7 rounded-full border"
                   />
-                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block animate-ping" />
+                  <span className="relative flex w-3 h-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                  </span>
                   <span className="text-white text-sm">{user.username}</span>
                 </li>
               ))}
