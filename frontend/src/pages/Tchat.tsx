@@ -153,13 +153,11 @@ export default function Chat() {
 
     const handler = (data: { pseudo: string }) => {
       setTypingUsers((prev) => {
-        // Ajoute le pseudo s'il n'est pas déjà là et que ce n'est pas toi
         if (data.pseudo !== pseudo && !prev.includes(data.pseudo)) {
           return [...prev, data.pseudo];
         }
         return prev;
       });
-      // Retire le pseudo après 5s d'inactivité
       setTimeout(() => {
         setTypingUsers((prev) => prev.filter((p) => p !== data.pseudo));
       }, 5000);
@@ -233,15 +231,6 @@ export default function Chat() {
               currentAvatar={uniqueUsers.find(u => u.username === pseudo)?.avatar_url}
               onAvatarChange={refreshUsers}
             />
-          </div>
-          <div className="px-4 py-6">
-            <h2 className="text-gray-400 text-xs font-bold uppercase mb-2">Salons</h2>
-            <div className="flex flex-col gap-1">
-              <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#36393f] text-white font-semibold">
-                <span className="text-lg">#</span> Tchat
-              </button>
-              {/* Ajoute d'autres salons ici */}
-            </div>
           </div>
           <div className="px-4 py-4">
             <h2 className="text-gray-400 text-xs font-bold uppercase mb-2">En ligne</h2>
@@ -368,7 +357,6 @@ export default function Chat() {
                     <div className="bg-[#40444b] rounded-lg px-3 py-2 sm:px-4 sm:py-3 shadow-sm border border-[#23272a] relative">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-indigo-200 text-sm sm:text-base">{user}</span>
-                        {/* Tu peux ajouter la date ici */}
                       </div>
                       <div
                         className="text-gray-100 break-words whitespace-pre-wrap text-sm sm:text-base"
