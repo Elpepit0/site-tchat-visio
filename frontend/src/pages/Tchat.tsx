@@ -27,6 +27,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [reactingTo, setReactingTo] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
@@ -183,14 +184,12 @@ export default function Chat() {
     });
   }
 
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   let touchTimeout: number | null = null;
-
   const handleTouchStart = (id: string) => {
     touchTimeout = window.setTimeout(() => setReactingTo(id), 500);
   };
-
   const handleTouchEnd = () => {
     if (touchTimeout) clearTimeout(touchTimeout);
   };
@@ -200,12 +199,29 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen bg-[#23272a]">
-
-      {/* Liste des salons et utilisateurs */}
-      <aside className="w-64 bg-[#2f3136] flex flex-col border-r border-[#23272a]">
+      {/* Sidebar responsive */}
+      <aside
+        className={`
+          fixed z-40 top-0 left-0 h-full w-72 bg-[#2f3136] flex flex-col border-r border-[#23272a] transform transition-transform duration-300
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          md:static md:translate-x-0 md:w-64 md:z-0
+        `}
+        style={{ maxWidth: "90vw" }}
+      >
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 py-6 border-b border-[#23272a]">
-            <h3 className="text-sm font-semibold text-indigo-400 mb-3 text-center">Mon avatar</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-semibold text-indigo-400 text-center w-full">Mon avatar</h3>
+              <button
+                className="md:hidden text-gray-400 hover:text-red-500 transition"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Fermer le menu"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             <AvatarChanger
               currentAvatar={uniqueUsers.find(u => u.username === pseudo)?.avatar_url}
               onAvatarChange={refreshUsers}
@@ -215,7 +231,7 @@ export default function Chat() {
             <h2 className="text-gray-400 text-xs font-bold uppercase mb-2">Salons</h2>
             <div className="flex flex-col gap-1">
               <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#36393f] text-white font-semibold">
-                <span className="text-lg">#</span> Tchat 
+                <span className="text-lg">#</span> Tchat
               </button>
               {/* Ajoute d'autres salons ici */}
             </div>
@@ -256,11 +272,29 @@ export default function Chat() {
         </div>
       </aside>
 
+      {/* Overlay pour fermer le menu sur mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-40 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main chat */}
-      <main className="flex-1 flex flex-col bg-[#36393f]">
+      <main className="flex-1 flex flex-col bg-[#36393f] relative">
         {/* Header */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-[#23272a] bg-[#36393f]">
+        <header className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#23272a] bg-[#36393f]">
           <div className="flex items-center gap-3">
+            {/* Bouton menu burger mobile */}
+            <button
+              className="md:hidden text-gray-400 hover:text-indigo-400 transition mr-2"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Ouvrir le menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             <span className="text-gray-400 text-xl">#</span>
             <h1 className="text-white text-xl font-bold">Tchat</h1>
           </div>
@@ -287,7 +321,7 @@ export default function Chat() {
         </header>
 
         {/* Messages */}
-        <section className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+        <section className="flex-1 overflow-y-auto px-2 sm:px-6 py-2 sm:py-4 space-y-4 sm:space-y-6">
           {messages.length === 0 ? (
             <p className="text-gray-400 italic">Aucun message pour le moment</p>
           ) : (
@@ -296,7 +330,7 @@ export default function Chat() {
               return (
                 <div
                   key={id}
-                  className="flex items-start gap-4 group relative"
+                  className="flex items-start gap-2 sm:gap-4 group relative"
                   onTouchStart={isMobile ? () => handleTouchStart(id) : undefined}
                   onTouchEnd={isMobile ? handleTouchEnd : undefined}
                 >
@@ -304,25 +338,25 @@ export default function Chat() {
                   <img
                     src={userObj?.avatar_url || '/default-avatar.jpg'}
                     alt="avatar"
-                    className="w-10 h-10 rounded-full border mt-1"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border mt-1"
                   />
                   {/* Message + réactions */}
                   <div className="flex-1 min-w-0">
-                    <div className="bg-[#40444b] rounded-lg px-4 py-3 shadow-sm border border-[#23272a] relative">
+                    <div className="bg-[#40444b] rounded-lg px-3 py-2 sm:px-4 sm:py-3 shadow-sm border border-[#23272a] relative">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-indigo-200">{user}</span>
+                        <span className="font-semibold text-indigo-200 text-sm sm:text-base">{user}</span>
                         {/* Tu peux ajouter la date ici */}
                       </div>
-                      <div className="text-gray-100 break-words whitespace-pre-wrap text-base">
+                      <div className="text-gray-100 break-words whitespace-pre-wrap text-sm sm:text-base">
                         {replaceEmojis(text)}
                       </div>
                       {/* Réactions */}
                       {reactions && Object.keys(reactions).length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
+                        <div className="flex flex-wrap gap-2 mt-2 sm:mt-3">
                           {Object.entries(reactions).map(([emoji, users]) => (
                             <button
                               key={emoji}
-                              className={`flex items-center gap-1 px-3 py-1 rounded-full shadow border text-base font-medium transition-all duration-100
+                              className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full shadow border text-base font-medium transition-all duration-100
                                 ${
                                   users.includes(pseudo!)
                                     ? "bg-indigo-600 text-white border-indigo-600"
@@ -331,7 +365,7 @@ export default function Chat() {
                               onClick={() => handleReact(id, emoji)}
                               title={users.join(", ")}
                             >
-                              <span className="text-xl">{emoji}</span>
+                              <span className="text-lg sm:text-xl">{emoji}</span>
                               <span className="text-xs">{users.length}</span>
                             </button>
                           ))}
@@ -370,13 +404,13 @@ export default function Chat() {
 
         {/* Typing */}
         {typingUser && (
-          <div className="text-sm text-white italic px-6 pb-2">
+          <div className="text-sm text-white italic px-4 sm:px-6 pb-2">
             {typingUser} est en train d’écrire...
           </div>
         )}
 
         {/* Zone de saisie */}
-        <footer className="px-6 py-4 border-t border-[#23272a] bg-[#36393f] flex items-center gap-3">
+        <footer className="px-2 sm:px-6 py-3 border-t border-[#23272a] bg-[#36393f] flex items-center gap-2 sm:gap-3">
           <EmojiInput
             value={newMessage}
             onChange={setNewMessage}
@@ -389,14 +423,14 @@ export default function Chat() {
           />
           <button
             onClick={sendMessage}
-            className="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold text-sm"
+            className="bg-indigo-600 text-white px-4 sm:px-5 py-2 sm:py-3 rounded-lg hover:bg-indigo-700 transition font-semibold text-sm"
           >
             Envoyer
           </button>
         </footer>
       </main>
       {!connected && (
-        <div className="bg-yellow-100 text-yellow-800 px-4 py-2 mb-4 rounded-lg text-center font-medium text-sm">
+        <div className="fixed bottom-0 left-0 right-0 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-t-lg text-center font-medium text-sm z-50">
           Connexion perdue, tentative de reconnexion...
         </div>
       )}
