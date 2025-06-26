@@ -30,7 +30,6 @@ export function useGroupVideoChat(roomId: string) {
     socketRef.current.on('disconnect', () => setConnected(false));
 
     socketRef.current.on('all-users', (users: string[]) => {
-      // users = array of peerIds (sans moi)
       users.forEach(peerId => {
         if (!peersRef.current.find(p => p.peerId === peerId)) {
           createPeer(peerId, true);
@@ -39,7 +38,8 @@ export function useGroupVideoChat(roomId: string) {
     });
 
     socketRef.current.on('user-joined', (peerId: string) => {
-      if (!peersRef.current.find(p => p.peerId === peerId)) {
+      // TOUS les utilisateurs (sauf le nouvel arrivant lui-même) doivent créer un peer vers le nouvel arrivant
+      if (!peersRef.current.find(p => p.peerId === peerId) && peerId !== socketRef.current.id) {
         createPeer(peerId, false);
       }
     });
