@@ -367,7 +367,10 @@ export default function Chat() {
                         <span className="font-semibold text-indigo-200 text-sm sm:text-base">{user}</span>
                         {/* Tu peux ajouter la date ici */}
                       </div>
-                      <div className="text-gray-100 break-words whitespace-pre-wrap text-sm sm:text-base">
+                      <div
+                        className="text-gray-100 break-words whitespace-pre-wrap text-sm sm:text-base"
+                        style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
+                      >
                         {replaceEmojis(text)}
                       </div>
                       {/* Réactions */}
