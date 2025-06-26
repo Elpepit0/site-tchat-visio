@@ -19,9 +19,10 @@ interface EmojiInputProps {
   value: string;
   onChange: (val: string) => void;
   onEnter: () => void;
+  onTyping?: () => void; // <--- Ajout
 }
 
-export default function EmojiInput({ value, onChange, onEnter }: EmojiInputProps) {
+export default function EmojiInput({ value, onChange, onEnter, onTyping }: EmojiInputProps) {
   const [showPicker, setShowPicker] = useState(false);
   const [emojiSuggestions, setEmojiSuggestions] = useState<any[]>([]);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
@@ -33,6 +34,7 @@ export default function EmojiInput({ value, onChange, onEnter }: EmojiInputProps
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     let text = e.target.value;
     onChange(text);
+    if (typeof onTyping === "function") onTyping(); // <--- Ajout
 
     // Cherche un :mot en cours de frappe (au moins 1 lettre après :)
     const match = /:([a-zA-Z0-9_+-]{1,})$/.exec(text);
@@ -81,28 +83,28 @@ export default function EmojiInput({ value, onChange, onEnter }: EmojiInputProps
   };
 
   return (
-    <div className="relative flex items-center w-full">
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={handleInput}
-        onKeyDown={handleKeyDown}
-        placeholder="Écris ton message... (utilise :smile: ou clique sur 😃)"
-        className="flex-grow border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-        autoComplete="off"
-      />
+    <div className="relative flex items-center w-full bg-[#40444b] rounded-lg px-3 py-2 shadow border border-[#23272a]">
       <button
         type="button"
-        className="ml-2"
+        className="mr-2 text-2xl text-gray-400 hover:text-indigo-400 transition"
         onClick={() => setShowPicker(v => !v)}
         tabIndex={-1}
         title="Ajouter un emoji"
       >
         😃
       </button>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={handleInput}
+        onKeyDown={handleKeyDown}
+        placeholder="Envoyer un message..."
+        className="flex-grow bg-transparent border-none outline-none text-gray-100 placeholder-gray-400 text-base"
+        autoComplete="off"
+      />
       {showPicker && (
-        <div className="absolute bottom-12 right-0 z-10">
+        <div className="absolute bottom-14 left-0 z-40">
           <Picker
             data={data}
             onEmojiSelect={(emoji: any) => {
@@ -112,13 +114,14 @@ export default function EmojiInput({ value, onChange, onEnter }: EmojiInputProps
             }}
             previewPosition="none"
             skinTonePosition="none"
+            theme="dark"
           />
         </div>
       )}
       {/* Menu déroulant d'autocomplete */}
       {emojiSuggestions.length > 0 && (
         <ul
-          className="absolute left-0 bottom-14 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 max-h-72 overflow-auto animate-fade-in"
+          className="absolute left-0 bottom-14 w-80 bg-[#2f3136] border border-[#23272a] rounded-xl shadow-2xl z-50 max-h-72 overflow-auto animate-fade-in"
           style={{ minWidth: "18rem" }}
           role="listbox"
         >
@@ -128,7 +131,7 @@ export default function EmojiInput({ value, onChange, onEnter }: EmojiInputProps
               className={`flex items-center gap-3 px-4 py-3 cursor-pointer select-none transition-colors duration-100 ${
                 i === suggestionIndex
                   ? "bg-indigo-600 text-white"
-                  : "hover:bg-indigo-50"
+                  : "hover:bg-indigo-700 hover:text-white text-gray-200"
               }`}
               onMouseDown={e => {
                 e.preventDefault();

@@ -222,7 +222,8 @@ def handle_send_message(data):
     message = {
         'id': str(uuid.uuid4()),
         'pseudo': username,
-        'text': text
+        'text': text,
+        'reactions': {}
     }
     add_message(message)
     emit('new_message', message, broadcast=True)
@@ -241,9 +242,9 @@ def handle_delete_message(data):
     for m in messages:
         r.rpush('messages', json.dumps(m))
     emit('messages', messages, broadcast=True)
-
-@socketio.on('typing')
-def handle_typing(data):
+    
+@socketio.on('user_typing')
+def handle_user_typing(data):
     pseudo = data.get('pseudo')
     emit('user_typing', {'pseudo': pseudo}, broadcast=True, include_self=False)
 
@@ -297,6 +298,36 @@ def set_avatar():
         db.session.commit()
         return jsonify({'message': 'Avatar mis à jour !'})
     return jsonify({'error': 'Utilisateur non trouvé.'}), 404
+
+@socketio.on('react_message')
+def handle_react_message(data):
+    message_id = data.get('messageId')
+    emoji = data.get('emoji')
+    username = session.get('username', 'Anonyme')
+
+    # Récupère tous les messages
+    messages = [json.loads(m) for m in r.lrange('messages', -MAX_MESSAGES, -1)]
+    found = False
+    for msg in messages:
+        if msg['id'] == message_id:
+            if 'reactions' not in msg:
+                msg['reactions'] = {}
+            if emoji not in msg['reactions']:
+                msg['reactions'][emoji] = []
+            if username in msg['reactions'][emoji]:
+                msg['reactions'][emoji].remove(username)
+                if not msg['reactions'][emoji]:
+                    del msg['reactions'][emoji]
+            else:
+                msg['reactions'][emoji].append(username)
+            found = True
+            break
+    if found:
+        # Réécrit la liste des messages
+        r.delete('messages')
+        for m in messages:
+            r.rpush('messages', json.dumps(m))
+        emit('messages', messages, broadcast=True)
 
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':

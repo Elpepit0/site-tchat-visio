@@ -1,29 +1,23 @@
-import { useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import '../index.css';
-
-
-
-
-
-
 
 export default function Home() {
   const [pseudo, setPseudo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeVisitors, setActiveVisitors] = useState(0);
   const navigate = useNavigate();
-  
+
   function fetchActiveVisitors() {
-  fetch('/active_visitors', {
-    credentials: 'include',
-  })
-    .then(res => res.json())
-    .then(data => {
-      setActiveVisitors(data.active_visitors);
+    fetch('/active_visitors', {
+      credentials: 'include',
     })
-    .catch(err => console.error('Erreur fetch active visitors:', err));
+      .then(res => res.json())
+      .then(data => {
+        setActiveVisitors(data.active_visitors);
+      })
+      .catch(err => console.error('Erreur fetch active visitors:', err));
   }
 
   useEffect(() => {
@@ -31,18 +25,15 @@ export default function Home() {
     const interval = setInterval(fetchActiveVisitors, 2000);
     return () => clearInterval(interval);
   }, []);
-  
+
   useEffect(() => {
     function sendPing() {
       fetch('/ping', { method: 'POST', credentials: 'include' }).catch(() => {});
     }
-
     sendPing();
     const intervalPing = setInterval(sendPing, 2000);
-
     return () => clearInterval(intervalPing);
   }, []);
-
 
   useEffect(() => {
     fetch('/me', {
@@ -74,16 +65,16 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen text-xl">
+      <div className="flex items-center justify-center h-screen text-xl bg-[#23272a] text-gray-200">
         Chargement...
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-indigo-100 via-white to-indigo-200 flex items-center overflow-hidden">
+    <div className="relative min-h-screen bg-[#23272a] flex items-center overflow-hidden">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-22">
+        <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-16 md:gap-22">
 
           {/* Texte d'accueil */}
           <motion.div
@@ -92,15 +83,15 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-6 text-indigo-700">
+            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-6 text-indigo-400">
               {pseudo ? (
-                <>Bienvenue, <span className="text-indigo-500">{pseudo}</span></>
+                <>Bienvenue, <span className="text-indigo-300">{pseudo}</span></>
               ) : (
                 <>Rejoins notre plateforme <br /> de tchat et visio</>
               )}
             </h1>
 
-            <p className="text-gray-600 text-lg md:text-xl mb-8 max-w-xl mx-auto md:mx-0">
+            <p className="text-gray-300 text-lg md:text-xl mb-8 max-w-xl mx-auto md:mx-0">
               {pseudo
                 ? "Choisis ton activité et commence à discuter ou passer des appels vidéos."
                 : "Connecte-toi ou crée un compte pour commencer à discuter avec le monde entier."}
@@ -131,7 +122,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl border border-red-500 text-red-600 font-semibold hover:bg-red-50 hover:shadow-sm transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl border border-red-500 text-red-400 font-semibold hover:bg-red-900/20 hover:shadow-sm transition-all duration-200"
                     title="Déconnexion"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -145,7 +136,7 @@ export default function Home() {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                     </span>
-                    <p className="text-sm text-gray-700 font-medium">
+                    <p className="text-sm text-gray-300 font-medium">
                       {activeVisitors} visiteur{activeVisitors > 1 ? 's' : ''} actuellement sur le site
                     </p>
                   </div>
@@ -165,7 +156,7 @@ export default function Home() {
 
                   <button
                     onClick={() => navigate('/register')}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl border border-gray-400 text-gray-700 font-semibold hover:bg-gray-100 hover:shadow-sm transition-all duration-200"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl border border-gray-400 text-gray-200 font-semibold hover:bg-gray-700 hover:shadow-sm transition-all duration-200"
                     title="Créer un compte"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -179,14 +170,13 @@ export default function Home() {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                     </span>
-                    <p className="text-sm text-gray-700 font-medium">
+                    <p className="text-sm text-gray-300 font-medium">
                       {activeVisitors} visiteur{activeVisitors > 1 ? 's' : ''} actuellement sur le site
                     </p>
                   </div>
                 </>
               )}
             </div>
-
           </motion.div>
 
           {/* Image animée */}
@@ -203,17 +193,12 @@ export default function Home() {
                 className="w-full h-auto object-cover rounded-xl"
               />
             </div>
-            <div className="absolute -right-6 -bottom-6 w-64 h-64 rounded-full bg-blue-100 -z-10"></div>
-            <div className="absolute -left-6 -top-6 w-40 h-40 rounded-full bg-indigo-300/30 -z-10"></div>
+            <div className="absolute -right-6 -bottom-6 w-64 h-64 rounded-full bg-blue-900/20 -z-10"></div>
+            <div className="absolute -left-6 -top-6 w-40 h-40 rounded-full bg-indigo-700/20 -z-10"></div>
           </motion.div>
 
         </div>
       </div>
-
-
-
-
     </div>
-
   );
 }
