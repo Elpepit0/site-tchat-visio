@@ -165,10 +165,10 @@ export default function Chat() {
       }, 5000);
     };
 
-    socketRef.current.on('user_typing', handler);
+    socketRef.current.on('typing_users', handler);
 
     return () => {
-      socketRef.current?.off('user_typing', handler);
+      socketRef.current?.off('typing_users', handler);
     };
   }, [pseudo]);
 

@@ -146,6 +146,7 @@ def active_visitors():
 # === CHAT WEBSOCKET SYNCHRONISÉ AVEC REDIS ===
 
 MAX_MESSAGES = 500
+TYPING_USERS_KEY = "typing_users"
 
 def get_connected_users():
     """Retourne la liste des utilisateurs connectés (valeurs du hash Redis)."""
@@ -203,9 +204,18 @@ def handle_set_username(new_username):
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    sid = request.sid
+    # Retire l'utilisateur de toutes les rooms Redis
+    for key in r.scan_iter("room:*"):
+        r.srem(key, sid)
+        emit('user-left', sid, room=key.decode().split("room:")[1])
+        if r.scard(key) == 0:
+            r.delete(key)
     user_json = r.hget('connected_users', request.sid)
     if user_json:
         username = json.loads(user_json)["username"]
+        # Retire aussi des typing users
+        r.hdel(TYPING_USERS_KEY, username)
         print(f"Utilisateur {username} (SID : {request.sid}) déconnecté.")
     remove_connected_user(request.sid)
     emit('user_list', get_connected_users(), broadcast=True)
@@ -246,31 +256,63 @@ def handle_delete_message(data):
 @socketio.on('user_typing')
 def handle_user_typing(data):
     pseudo = data.get('pseudo')
-    emit('user_typing', {'pseudo': pseudo}, broadcast=True, include_self=False)
+    if not pseudo:
+        return
+    r.hset(TYPING_USERS_KEY, pseudo, time.time())
+    cleanup_typing_users()
+    typing_users = list(r.hkeys(TYPING_USERS_KEY))
+    emit('typing_users', {'users': typing_users}, broadcast=True, include_self=False)
+
+def cleanup_typing_users(timeout=5):
+    """Retire les pseudos qui n’ont pas envoyé de signal depuis X secondes."""
+    now = time.time()
+    for pseudo, last in r.hgetall(TYPING_USERS_KEY).items():
+        try:
+            if now - float(last) > timeout:
+                r.hdel(TYPING_USERS_KEY, pseudo)
+        except Exception:
+            r.hdel(TYPING_USERS_KEY, pseudo)
 
 # === WEBSOCKET POUR WEBRTC ===
 @socketio.on('join-room')
 def handle_join_room(room):
     join_room(room)
-    emit('user-connected', {'room': room, 'user': request.sid}, room=room)
+    sid = request.sid
+    add_user_to_room(room, sid)
+    # Envoie la liste des autres utilisateurs (sauf moi)
+    others = [s for s in get_users_in_room(room) if s != sid]
+    emit('all-users', others, room=sid)
+    # Notifie les autres de mon arrivée
+    emit('user-joined', sid, room=room, include_self=False)
+
+@socketio.on('leave-room')
+def handle_leave_room(room):
+    sid = request.sid
+    leave_room(room)
+    remove_user_from_room(room, sid)
+    emit('user-left', sid, room=room)
+    cleanup_room(room)
 
 @socketio.on('offer')
 def handle_offer(data):
+    to = data.get('to')
+    offer = data.get('offer')
     room = data.get('room')
-    if room:
-        emit('offer', data, room=room, include_self=False)
+    emit('offer', {'from': request.sid, 'offer': offer}, room=to)
 
 @socketio.on('answer')
 def handle_answer(data):
+    to = data.get('to')
+    answer = data.get('answer')
     room = data.get('room')
-    if room:
-        emit('answer', data, room=room, include_self=False)
+    emit('answer', {'from': request.sid, 'answer': answer}, room=to)
 
 @socketio.on('ice-candidate')
-def handle_ice(data):
+def handle_ice_candidate(data):
+    to = data.get('to')
+    candidate = data.get('candidate')
     room = data.get('room')
-    if room:
-        emit('ice-candidate', data, room=room, include_self=False)
+    emit('ice-candidate', {'from': request.sid, 'candidate': candidate}, room=to)
 
 @app.errorhandler(404)
 def not_found(e):
@@ -328,6 +370,19 @@ def handle_react_message(data):
         for m in messages:
             r.rpush('messages', json.dumps(m))
         emit('messages', messages, broadcast=True)
+
+def add_user_to_room(room, sid):
+    r.sadd(f"room:{room}", sid)
+
+def remove_user_from_room(room, sid):
+    r.srem(f"room:{room}", sid)
+
+def get_users_in_room(room):
+    return list(r.smembers(f"room:{room}"))
+
+def cleanup_room(room):
+    if r.scard(f"room:{room}") == 0:
+        r.delete(f"room:{room}")
 
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':

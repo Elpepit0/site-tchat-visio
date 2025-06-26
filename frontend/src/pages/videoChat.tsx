@@ -1,4 +1,4 @@
-import { useVideoChat } from '../hooks/useVideoChat';
+import { useGroupVideoChat } from '../hooks/useVideoChat';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
@@ -10,12 +10,12 @@ export default function VideoChat() {
   // Utilisation de ton hook personnalisé pour la visio
   const {
     localVideoRef,
-    remoteVideoRef,
+    peers,
     startCall,
     endCall,
     inCall,
     connected,
-  } = useVideoChat(roomId);
+  } = useGroupVideoChat(roomId);
 
   // Authentification
   const [pseudo, setPseudo] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export default function VideoChat() {
       {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-center gap-4 px-6 py-4 border-b border-[#23272a] bg-[#36393f]">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-indigo-400 drop-shadow-md text-center md:text-left">
-          <span className="text-gray-400 mr-2">📹</span>Visio
+          <span className="text-gray-400 mr-2">📹</span>Visio Groupe
         </h1>
         <div className="flex flex-wrap justify-center md:justify-end gap-2">
           <button
@@ -102,19 +102,30 @@ export default function VideoChat() {
 
       {/* Vidéos */}
       <main className="flex-1 flex flex-col items-center justify-center px-2 py-8 sm:py-12 bg-[#23272a]">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-6 w-full max-w-4xl">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            playsInline
-            className="w-full sm:w-[90%] md:w-1/2 h-56 sm:h-64 rounded-3xl border-2 border-[#36393f] shadow-lg bg-black object-cover"
-          />
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full sm:w-[90%] md:w-1/2 h-56 sm:h-64 rounded-3xl border-2 border-[#36393f] shadow-lg bg-black object-cover"
-          />
+        <div className="flex flex-wrap gap-6 w-full max-w-5xl justify-center items-center">
+          {/* Local video */}
+          <div className="flex flex-col items-center">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-40 h-40 sm:w-56 sm:h-56 rounded-3xl border-2 border-indigo-600 shadow-lg bg-black object-cover"
+            />
+            <span className="mt-2 text-indigo-300 text-xs font-semibold">Moi</span>
+          </div>
+          {/* Remote videos */}
+          {peers.map(peer => (
+            <video
+              key={peer.peerId}
+              ref={el => {
+                if (el && peer.stream) el.srcObject = peer.stream;
+              }}
+              autoPlay
+              playsInline
+              className="w-40 h-40 sm:w-56 sm:h-56 rounded-3xl border-2 border-[#36393f] shadow-lg bg-black object-cover"
+            />
+          ))}
         </div>
 
         {/* Boutons d'appel */}
