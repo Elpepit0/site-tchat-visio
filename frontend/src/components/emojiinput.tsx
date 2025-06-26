@@ -60,7 +60,6 @@ export default function EmojiInput({ value, onChange, onEnter, onTyping }: Emoji
         e.preventDefault();
         const suggestion = emojiSuggestions[suggestionIndex];
         if (suggestion) {
-          // Remplace le :mot par l'emoji
           const newValue = value.replace(/:([a-zA-Z0-9_+-]{1,})$/, suggestion.skins ? suggestion.skins[0].native : suggestion.native);
           onChange(newValue);
           setEmojiSuggestions([]);
@@ -68,9 +67,11 @@ export default function EmojiInput({ value, onChange, onEnter, onTyping }: Emoji
       } else if (e.key === "Escape") {
         setEmojiSuggestions([]);
       }
-    } else if (e.key === "Enter") {
+    } else if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       onEnter();
     }
+    // sinon, laisse le comportement natif (Maj+Entrée)
   };
 
   // Gestion du clic sur une suggestion
@@ -94,12 +95,14 @@ export default function EmojiInput({ value, onChange, onEnter, onTyping }: Emoji
         😃
       </button>
       <textarea
-        ref={inputRef as any}
+        ref={inputRef}
         value={value}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
         placeholder="Envoyer un message..."
         rows={1}
+        wrap="soft"
+        style={{ overflowX: "hidden" }}
         className="flex-grow bg-transparent border-none outline-none text-gray-100 placeholder-gray-400 text-base resize-none"
         autoComplete="off"
       />
