@@ -25,7 +25,7 @@ export default function Chat() {
   const [connected, setConnected] = useState(true);
   const [pseudo, setPseudo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [typingUser, setTypingUser] = useState<string | null>(null);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [reactingTo, setReactingTo] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -94,8 +94,8 @@ export default function Chat() {
     socket.on('connect_error', () => setConnected(false));
     socket.on('user_list', (userList: User[]) => setOnlineUsers(userList));
     socket.on('typing', (username: string) => {
-      setTypingUser(username);
-      setTimeout(() => setTypingUser(null), 3000);
+      setTypingUsers(prev => Array.from(new Set([...prev, username])));
+      setTimeout(() => setTypingUsers(prev => prev.filter(u => u !== username)), 3000);
     });
 
     return () => {
@@ -152,10 +152,17 @@ export default function Chat() {
     if (!socketRef.current) return;
 
     const handler = (data: { pseudo: string }) => {
-      if (data.pseudo !== pseudo) {
-        setTypingUser(data.pseudo);
-        setTimeout(() => setTypingUser(null), 5000);
-      }
+      setTypingUsers((prev) => {
+        // Ajoute le pseudo s'il n'est pas déjà là et que ce n'est pas toi
+        if (data.pseudo !== pseudo && !prev.includes(data.pseudo)) {
+          return [...prev, data.pseudo];
+        }
+        return prev;
+      });
+      // Retire le pseudo après 5s d'inactivité
+      setTimeout(() => {
+        setTypingUsers((prev) => prev.filter((p) => p !== data.pseudo));
+      }, 5000);
     };
 
     socketRef.current.on('user_typing', handler);
@@ -416,9 +423,16 @@ export default function Chat() {
         </section>
 
         {/* Typing */}
-        {typingUser && (
+        {typingUsers.length > 0 && (
           <div className="text-sm text-white italic px-4 sm:px-6 pb-2">
-            {typingUser} est en train d’écrire...
+            {typingUsers
+              .map((u, i) =>
+                i === typingUsers.length - 1 && i !== 0
+                  ? `et ${u}`
+                  : u
+              )
+              .join(typingUsers.length > 2 ? ', ' : ' ')}
+            {typingUsers.length === 1 ? ' est' : ' sont'} en train d’écrire...
           </div>
         )}
 
