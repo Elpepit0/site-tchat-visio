@@ -26,12 +26,12 @@ export default function EmojiInput({ value, onChange, onEnter, onTyping }: Emoji
   const [showPicker, setShowPicker] = useState(false);
   const [emojiSuggestions, setEmojiSuggestions] = useState<any[]>([]);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Recherche d'emojis pour l'autocomplete
   const getSuggestions = (query: string) => searchEmojis(query, 6);
 
-  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     let text = e.target.value;
     onChange(text);
     if (typeof onTyping === "function") onTyping(); // <--- Ajout
@@ -48,7 +48,7 @@ export default function EmojiInput({ value, onChange, onEnter, onTyping }: Emoji
   };
 
   // Gestion des flèches et entrée dans l'autocomplete
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (emojiSuggestions.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -93,14 +93,14 @@ export default function EmojiInput({ value, onChange, onEnter, onTyping }: Emoji
       >
         😃
       </button>
-      <input
-        ref={inputRef}
-        type="text"
+      <textarea
+        ref={inputRef as any}
         value={value}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
         placeholder="Envoyer un message..."
-        className="flex-grow bg-transparent border-none outline-none text-gray-100 placeholder-gray-400 text-base"
+        rows={1}
+        className="flex-grow bg-transparent border-none outline-none text-gray-100 placeholder-gray-400 text-base resize-none"
         autoComplete="off"
       />
       {showPicker && (
