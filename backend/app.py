@@ -13,19 +13,15 @@ import uuid
 import os
 import json
 
-# === CONFIGURATION DE L'APPLICATION FLASK ===
+# === CONFIGURATION FLASK & REDIS ===
 app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
-
 app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7
-
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://uq7xkhav1wn7wvjpvivh:iUo75NftjJPDK8opaITvrJ4YPsRDXo@bmmnewpodxpug01sbfgh-postgresql.services.clever-cloud.com:50013/bmmnewpodxpug01sbfgh'
-
-
 
 port = int(os.environ.get('PORT', 5000))
 
@@ -37,7 +33,6 @@ CORS(app, origins=[
     "https://tchat-visio.cleverapps.io",
 ], supports_credentials=True)
 
-# Redis config (utilise l'URL Clever Cloud en prod)
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
@@ -61,38 +56,31 @@ class User(db.Model):
 with app.app_context():
     db.create_all()
 
-# === ROUTES D'AUTHENTIFICATION ===
+# === AUTHENTIFICATION ===
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
     username = data.get('username')
     password = data.get('password')
-
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Nom d’utilisateur déjà pris.'}), 409
-
     password_hash = generate_password_hash(password)
     new_user = User(username=username, password_hash=password_hash)
     db.session.add(new_user)
     db.session.commit()
-
     session['username'] = username
     return jsonify({'message': 'Inscription réussie !'}), 200
-
 
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
-
     user = User.query.filter_by(username=username).first()
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({'error': 'Nom d’utilisateur ou mot de passe invalide.'}), 401
-
     session['username'] = username
     return jsonify({'message': 'Connexion réussie !'}), 200
-
 
 @app.route('/me', methods=['GET'])
 def me():
@@ -101,29 +89,19 @@ def me():
     else:
         return jsonify({'error': 'Non connecté.'}), 401
 
-
 @app.route('/logout', methods=['POST'])
 def logout():
     session.pop('username', None)
     return jsonify({'message': 'Déconnexion réussie !'})
 
-
-@app.route('/test-flask')
-def test_flask():
-    print("Route /test-flask appelée")
-    return "Flask fonctionne"
-
-
-# === FRONTEND REACT ===
+# === FRONTEND REACT SERVE ===
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react(path):
-    print("Requête reçue pour :", path)
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return app.send_static_file(path)
     else:
         return app.send_static_file('index.html')
-
 
 # === VISITEURS ACTIFS ===
 visitors = {}
@@ -132,7 +110,6 @@ visitors = {}
 def ping():
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
-
     sid = session['session_id']
     visitors[sid] = time.time()
     return jsonify({'status': 'pong'})
@@ -143,24 +120,21 @@ def active_visitors():
     active = [sid for sid, last_ping in visitors.items() if now - last_ping < 2]
     return jsonify({'active_visitors': len(active)})
 
-# === CHAT WEBSOCKET SYNCHRONISÉ AVEC REDIS ===
+# === CHAT GLOBAL SYNCHRONISÉ AVEC REDIS ===
 
 MAX_MESSAGES = 500
 TYPING_USERS_KEY = "typing_users"
 
 def get_connected_users():
-    """Retourne la liste des utilisateurs connectés (valeurs du hash Redis)."""
     users = r.hvals('connected_users')
     result = []
     for u in users:
         user_info = json.loads(u)
-        # Cherche l'avatar dans la base
         db_user = User.query.filter_by(username=user_info["username"]).first()
         avatar_url = db_user.avatar_url if db_user else None
         user_info["avatar_url"] = avatar_url
         result.append(user_info)
     return result
-
 
 def add_connected_user(sid, username):
     user_info = {"username": username, "connected_at": time.time(), "sid": sid}
@@ -182,8 +156,10 @@ def get_messages():
 
 def add_message(message):
     r.rpush('messages', json.dumps(message))
-    # Limite la taille de la liste
     r.ltrim('messages', -MAX_MESSAGES, -1)
+
+# === SOCKET.IO EVENTS CHAT GLOBAL ===
+
 @socketio.on('connect')
 def handle_connect():
     username = session.get('username')
@@ -191,9 +167,7 @@ def handle_connect():
         username = f"Anonyme-{str(uuid.uuid4())[:4]}"
     add_connected_user(request.sid, username)
     print(f"Utilisateur {username} connecté avec SID : {request.sid}.")
-    # Envoie les derniers messages au nouvel utilisateur
     emit('messages', get_messages())
-    # Met à jour la liste des utilisateurs pour tous
     emit('user_list', get_connected_users(), broadcast=True)
 
 @socketio.on('set_username')
@@ -204,18 +178,9 @@ def handle_set_username(new_username):
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    sid = request.sid
-    # Retire l'utilisateur de toutes les rooms Redis
-    for key in r.scan_iter("room:*"):
-        r.srem(key, sid)
-        emit('user-left', sid, room=key.decode().split("room:")[1])
-        if r.scard(key) == 0:
-            r.delete(key)
     user_json = r.hget('connected_users', request.sid)
     if user_json:
         username = json.loads(user_json)["username"]
-        # Retire aussi des typing users
-        r.hdel(TYPING_USERS_KEY, username)
         print(f"Utilisateur {username} (SID : {request.sid}) déconnecté.")
     remove_connected_user(request.sid)
     emit('user_list', get_connected_users(), broadcast=True)
@@ -242,112 +207,25 @@ def handle_send_message(data):
 def handle_delete_message(data):
     message_id = data.get('id')
     if message_id == "all":
-        # Supprime tous les messages
         r.delete('messages')
         emit('messages', [], broadcast=True)
         return
-    # Sinon, supprime un message précis
     messages = [m for m in get_messages() if m['id'] != message_id]
     r.delete('messages')
     for m in messages:
         r.rpush('messages', json.dumps(m))
     emit('messages', messages, broadcast=True)
-    
+
 @socketio.on('user_typing')
 def handle_user_typing(data):
     pseudo = data.get('pseudo')
-    if not pseudo:
-        return
-    r.hset(TYPING_USERS_KEY, pseudo, time.time())
-    cleanup_typing_users()
-    typing_users = list(r.hkeys(TYPING_USERS_KEY))
-    emit('typing_users', {'users': typing_users}, broadcast=True, include_self=False)
-
-def cleanup_typing_users(timeout=5):
-    """Retire les pseudos qui n’ont pas envoyé de signal depuis X secondes."""
-    now = time.time()
-    for pseudo, last in r.hgetall(TYPING_USERS_KEY).items():
-        try:
-            if now - float(last) > timeout:
-                r.hdel(TYPING_USERS_KEY, pseudo)
-        except Exception:
-            r.hdel(TYPING_USERS_KEY, pseudo)
-
-# === WEBSOCKET POUR WEBRTC ===
-@socketio.on('join-room')
-def handle_join_room(room):
-    join_room(room)
-    sid = request.sid
-    add_user_to_room(room, sid)
-    # Envoie la liste des autres utilisateurs (sauf moi)
-    others = [s for s in get_users_in_room(room) if s != sid]
-    emit('all-users', others, room=sid)
-    # Notifie les autres de mon arrivée
-    emit('user-joined', sid, room=room, include_self=False)
-
-@socketio.on('leave-room')
-def handle_leave_room(room):
-    sid = request.sid
-    leave_room(room)
-    remove_user_from_room(room, sid)
-    emit('user-left', sid, room=room)
-    cleanup_room(room)
-
-@socketio.on('offer')
-def handle_offer(data):
-    to = data.get('to')
-    offer = data.get('offer')
-    room = data.get('room')
-    emit('offer', {'from': request.sid, 'offer': offer}, room=to)
-
-@socketio.on('answer')
-def handle_answer(data):
-    to = data.get('to')
-    answer = data.get('answer')
-    room = data.get('room')
-    emit('answer', {'from': request.sid, 'answer': answer}, room=to)
-
-@socketio.on('ice-candidate')
-def handle_ice_candidate(data):
-    to = data.get('to')
-    candidate = data.get('candidate')
-    room = data.get('room')
-    emit('ice-candidate', {'from': request.sid, 'candidate': candidate}, room=to)
-
-@app.errorhandler(404)
-def not_found(e):
-    return send_from_directory(app.static_folder, 'index.html')
-
-@app.before_request
-def log_origin():
-    print("Origin:", request.headers.get("Origin"))
-
-@app.after_request
-def allow_cors_for_native_clients(response):
-    if request.headers.get("Origin") is None:
-        response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
-
-@app.route('/set_avatar', methods=['POST'])
-def set_avatar():
-    if 'username' not in session:
-        return jsonify({'error': 'Non connecté.'}), 401
-    data = request.json
-    avatar_url = data.get('avatar_url')
-    user = User.query.filter_by(username=session['username']).first()
-    if user:
-        user.avatar_url = avatar_url
-        db.session.commit()
-        return jsonify({'message': 'Avatar mis à jour !'})
-    return jsonify({'error': 'Utilisateur non trouvé.'}), 404
+    emit('user_typing', {'pseudo': pseudo}, broadcast=True, include_self=False)
 
 @socketio.on('react_message')
 def handle_react_message(data):
     message_id = data.get('messageId')
     emoji = data.get('emoji')
     username = session.get('username', 'Anonyme')
-
-    # Récupère tous les messages
     messages = [json.loads(m) for m in r.lrange('messages', -MAX_MESSAGES, -1)]
     found = False
     for msg in messages:
@@ -365,24 +243,64 @@ def handle_react_message(data):
             found = True
             break
     if found:
-        # Réécrit la liste des messages
         r.delete('messages')
         for m in messages:
             r.rpush('messages', json.dumps(m))
         emit('messages', messages, broadcast=True)
 
-def add_user_to_room(room, sid):
-    r.sadd(f"room:{room}", sid)
+# === WEBSOCKET POUR WEBRTC (rooms pour la visio uniquement) ===
 
-def remove_user_from_room(room, sid):
-    r.srem(f"room:{room}", sid)
+@socketio.on('join-room')
+def handle_join_room(room):
+    join_room(room)
+    emit('user-connected', {'room': room, 'user': request.sid}, room=room)
 
-def get_users_in_room(room):
-    return list(r.smembers(f"room:{room}"))
+@socketio.on('offer')
+def handle_offer(data):
+    room = data.get('room')
+    if room:
+        emit('offer', data, room=room, include_self=False)
 
-def cleanup_room(room):
-    if r.scard(f"room:{room}") == 0:
-        r.delete(f"room:{room}")
+@socketio.on('answer')
+def handle_answer(data):
+    room = data.get('room')
+    if room:
+        emit('answer', data, room=room, include_self=False)
+
+@socketio.on('ice-candidate')
+def handle_ice(data):
+    room = data.get('room')
+    if room:
+        emit('ice-candidate', data, room=room, include_self=False)
+
+# === AUTRES ROUTES ET CONFIG ===
+
+@app.route('/set_avatar', methods=['POST'])
+def set_avatar():
+    if 'username' not in session:
+        return jsonify({'error': 'Non connecté.'}), 401
+    data = request.json
+    avatar_url = data.get('avatar_url')
+    user = User.query.filter_by(username=session['username']).first()
+    if user:
+        user.avatar_url = avatar_url
+        db.session.commit()
+        return jsonify({'message': 'Avatar mis à jour !'})
+    return jsonify({'error': 'Utilisateur non trouvé.'}), 404
+
+@app.errorhandler(404)
+def not_found(e):
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.before_request
+def log_origin():
+    print("Origin:", request.headers.get("Origin"))
+
+@app.after_request
+def allow_cors_for_native_clients(response):
+    if request.headers.get("Origin") is None:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':
