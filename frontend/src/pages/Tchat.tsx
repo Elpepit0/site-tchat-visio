@@ -202,6 +202,28 @@ export default function Chat() {
   if (loading) return <div>Chargement...</div>;
   if (!pseudo) return null;
 
+  const groupedMessages: {
+    id: string;
+    pseudo: string;
+    texts: string[];
+    reactions?: { [emoji: string]: string[] };
+  }[] = [];
+
+  messages.forEach((msg, idx) => {
+    const prev = messages[idx - 1];
+    if (prev && prev.pseudo === msg.pseudo) {
+      groupedMessages[groupedMessages.length - 1].texts.push(msg.text);
+      // (Optionnel : tu peux aussi fusionner les réactions ici si tu veux)
+    } else {
+      groupedMessages.push({
+        id: msg.id,
+        pseudo: msg.pseudo,
+        texts: [msg.text],
+        reactions: msg.reactions,
+      });
+    }
+  });
+
   return (
     <div className="flex h-screen bg-[#23272a]">
       {/* Sidebar responsive */}
@@ -334,10 +356,10 @@ export default function Chat() {
 
         {/* Messages */}
         <section className="flex-1 overflow-y-auto px-2 sm:px-6 py-2 sm:py-4 space-y-4 sm:space-y-6">
-          {messages.length === 0 ? (
+          {groupedMessages.length === 0 ? (
             <p className="text-gray-400 italic">Aucun message pour le moment</p>
           ) : (
-            messages.map(({ id, pseudo: user, text, reactions }) => {
+            groupedMessages.map(({ id, pseudo: user, texts, reactions }) => {
               const userObj = uniqueUsers.find(u => u.username === user);
               return (
                 <div
@@ -352,18 +374,20 @@ export default function Chat() {
                     alt="avatar"
                     className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border mt-1"
                   />
-                  {/* Message + réactions */}
                   <div className="flex-1 min-w-0">
                     <div className="bg-[#40444b] rounded-lg px-3 py-2 sm:px-4 sm:py-3 shadow-sm border border-[#23272a] relative">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-indigo-200 text-sm sm:text-base">{user}</span>
                       </div>
-                      <div
-                        className="text-gray-100 break-words whitespace-pre-wrap text-sm sm:text-base"
-                        style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
-                      >
-                        {replaceEmojis(text)}
-                      </div>
+                      {texts.map((text, i) => (
+                        <div
+                          key={i}
+                          className="text-gray-100 break-words whitespace-pre-wrap text-sm sm:text-base"
+                          style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
+                        >
+                          {replaceEmojis(text)}
+                        </div>
+                      ))}
                       {/* Réactions */}
                       {reactions && Object.keys(reactions).length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2 sm:mt-3">
