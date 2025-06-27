@@ -334,7 +334,7 @@ export default function Chat() {
             <span className="text-gray-400 text-xl">#</span>
             <h1 className="text-white text-xl font-bold">Tchat</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2"><span className='text-red-500 font-bold'>ATTENTION : Cette action est irréversible ! -- Et pour TOUT le monde</span>
             <button
               onClick={() => {
                 setMessages([]);
