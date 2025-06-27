@@ -15,13 +15,13 @@ import json
 
 # === CONFIGURATION FLASK & REDIS ===
 app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
-app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
+app.secret_key = os.environ.get('SECRET_KEY')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://uq7xkhav1wn7wvjpvivh:iUo75NftjJPDK8opaITvrJ4YPsRDXo@bmmnewpodxpug01sbfgh-postgresql.services.clever-cloud.com:50013/bmmnewpodxpug01sbfgh'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('POSTGRESQL_ADDON_URI')
 
 port = int(os.environ.get('PORT', 5000))
 
@@ -42,7 +42,8 @@ socketio = SocketIO(app, cors_allowed_origins=[
     "http://localhost:5000",
     "http://localhost:9000",
     "https://tchat-visio.cleverapps.io",
-], async_mode="eventlet", manage_session=True, message_queue=REDIS_URL)
+    "https://tchat-visio.cleverapps.io/socket.io/"
+], async_mode="eventlet", manage_session=True, message_queue=REDIS_URL, path='/socket.io')
 
 db = SQLAlchemy(app)
 
