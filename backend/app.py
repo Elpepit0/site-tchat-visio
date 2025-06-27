@@ -7,21 +7,36 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+import boto3
+from botocore.client import Config
+from io import BytesIO
 import redis
 import time
 import uuid
 import os
 import json
+import tempfile
+import requests
+import traceback
 
 # === CONFIGURATION FLASK & REDIS ===
 app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
-app.secret_key = os.environ.get('SECRET_KEY')
+app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600 * 24 * 7
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('POSTGRESQL_ADDON_URI')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'POSTGRESQL_ADDON_URI',
+    'sqlite:///local.db'
+)
+app.config['CELLAR_ADDON_HOST'] = "cellar-c2.services.clever-cloud.com"
+app.config['CELLAR_ADDON_KEY_ID'] = "3MZQFZBSK7EV0CPOJNKN"
+app.config['CELLAR_ADDON_KEY_SECRET'] = "ycvC9eQzC6tufUSonj3JHTVQAPvjsDnjz0tTBkbJ"
+app.config['CELLAR_BUCKET'] = 'mybucket-tchat'
+
 
 port = int(os.environ.get('PORT', 5000))
 
@@ -86,7 +101,11 @@ def login():
 @app.route('/me', methods=['GET'])
 def me():
     if 'username' in session:
-        return jsonify({'username': session['username']})
+        user = User.query.filter_by(username=session['username']).first()
+        return jsonify({
+            'username': session['username'],
+            'avatar_url': user.avatar_url if user else None
+        })
     else:
         return jsonify({'error': 'Non connecté.'}), 401
 
@@ -121,6 +140,76 @@ def active_visitors():
     active = [sid for sid, last_ping in visitors.items() if now - last_ping < 2]
     return jsonify({'active_visitors': len(active)})
 
+# === UPLOAD AVATAR AVEC BOTO3 ===
+
+import requests
+
+@app.route("/upload-avatar", methods=["POST"])
+def upload_avatar():
+    try:
+        if 'username' not in session:
+            return jsonify({"error": "Non connecté"}), 401
+
+        file = request.files.get("file")
+        if not file:
+            return jsonify({"error": "No file"}), 400
+
+        username = session['username']
+        ext = os.path.splitext(secure_filename(file.filename))[1]
+        filename = f"{username}_{uuid.uuid4().hex}{ext}"
+        bucket = "mybucket-tchat"
+        host = "cellar-c2.services.clever-cloud.com"
+
+        file_bytes = file.read()
+        if not file_bytes or len(file_bytes) == 0:
+            return jsonify({"error": "Fichier vide"}), 400
+
+        s3 = boto3.client(
+            's3',
+            endpoint_url=f"https://{host}",
+            aws_access_key_id="3MZQFZBSK7EV0CPOJNKN",
+            aws_secret_access_key="ycvC9eQzC6tufUSonj3JHTVQAPvjsDnjz0tTBkbJ",
+            config=Config(signature_version='s3v4')
+        )
+
+        # Génère une URL PUT pré-signée
+        presigned_url = s3.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': bucket,
+                'Key': f"avatars/{filename}",
+                'ACL': 'public-read',
+                'ContentType': file.content_type
+            },
+            ExpiresIn=60
+        )
+
+        # Upload direct via HTTP PUT avec Content-Length
+        resp = requests.put(
+            presigned_url,
+            data=file_bytes,
+            headers={
+                'Content-Type': file.content_type,
+                'x-amz-acl': 'public-read',
+                'Content-Length': str(len(file_bytes))
+            }
+        )
+
+        if resp.status_code not in (200, 201):
+            return jsonify({"error": f"Upload failed: {resp.status_code} {resp.text}"}), 500
+
+        public_url = f"https://{bucket}.{host}/avatars/{filename}"
+
+        user = User.query.filter_by(username=username).first()
+        if user:
+            user.avatar_url = public_url
+            db.session.commit()
+
+        return jsonify({"url": public_url})
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 # === CHAT GLOBAL SYNCHRONISÉ AVEC REDIS ===
 
 MAX_MESSAGES = 500
@@ -275,19 +364,6 @@ def handle_ice(data):
         emit('ice-candidate', data, room=room, include_self=False)
 
 # === AUTRES ROUTES ET CONFIG ===
-
-@app.route('/set_avatar', methods=['POST'])
-def set_avatar():
-    if 'username' not in session:
-        return jsonify({'error': 'Non connecté.'}), 401
-    data = request.json
-    avatar_url = data.get('avatar_url')
-    user = User.query.filter_by(username=session['username']).first()
-    if user:
-        user.avatar_url = avatar_url
-        db.session.commit()
-        return jsonify({'message': 'Avatar mis à jour !'})
-    return jsonify({'error': 'Utilisateur non trouvé.'}), 404
 
 @app.errorhandler(404)
 def not_found(e):

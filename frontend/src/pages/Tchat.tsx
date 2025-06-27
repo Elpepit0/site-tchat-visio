@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
-import AvatarChanger from '../components/avatarChanger';
+import AvatarUpload from '../components/avatarChanger';
 import EmojiInput from '../components/emojiinput';
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
@@ -135,11 +135,11 @@ export default function Chat() {
   };
 
   // Rafraîchir la liste des utilisateurs (utilisé par AvatarChanger)
-  const refreshUsers = () => {
-    if (socketRef.current) {
-      socketRef.current.emit('get_user_list');
-    }
-  };
+  // const refreshUsers = () => {
+  // if (socketRef.current) {
+  //    socketRef.current.emit('get_user_list');
+  //  }
+  //};
 
   const handleReact = (messageId: string, emoji: string) => {
     if (socketRef.current) {
@@ -249,9 +249,7 @@ export default function Chat() {
                 </svg>
               </button>
             </div>
-            <AvatarChanger
-              currentAvatar={uniqueUsers.find(u => u.username === pseudo)?.avatar_url}
-              onAvatarChange={refreshUsers}
+            <AvatarUpload
             />
           </div>
           <div className="px-4 py-4">
