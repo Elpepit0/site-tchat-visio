@@ -379,6 +379,13 @@ def allow_cors_for_native_clients(response):
         response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
+@app.route('/user/<username>')
+def get_user(username):
+    user = User.query.filter_by(username=username).first()
+    if user and user.avatar_url:
+        return jsonify({'avatar_url': user.avatar_url})
+    return jsonify({'avatar_url': None}), 404
+
 # === LANCEMENT DU SERVEUR ===
 if __name__ == '__main__':
     print("Eventlet utilisé :", socketio.async_mode)

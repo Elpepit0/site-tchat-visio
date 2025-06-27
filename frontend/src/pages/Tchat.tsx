@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import AvatarUpload from '../components/avatarChanger';
@@ -31,6 +31,7 @@ export default function Chat() {
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+  const [avatarCache, setAvatarCache] = useState<{ [username: string]: string }>({});
 
   const navigate = useNavigate();
 
@@ -134,12 +135,26 @@ export default function Chat() {
     });
   };
 
-  // Rafraîchir la liste des utilisateurs (utilisé par AvatarChanger)
-  // const refreshUsers = () => {
-  // if (socketRef.current) {
-  //    socketRef.current.emit('get_user_list');
-  //  }
-  //};
+  const fetchAvatar = useCallback(async (username: string) => {
+    if (avatarCache[username] !== undefined) return;
+    try {
+      const res = await fetch(`/user/${username}`);
+      const data = await res.json();
+      setAvatarCache(prev => ({ ...prev, [username]: data.avatar_url || '/default-avatar.jpg' }));
+    } catch {
+      setAvatarCache(prev => ({ ...prev, [username]: '/default-avatar.jpg' }));
+    }
+  }, [avatarCache]);
+  
+  useEffect(() => {
+      const allAuthors = Array.from(new Set(messages.map(m => m.pseudo)));
+      allAuthors.forEach((author) => {
+        const userObj = uniqueUsers.find(u => u.username === author);
+        if (!userObj && avatarCache[author] === undefined) {
+          fetchAvatar(author);
+        }
+      });
+    }, [messages, uniqueUsers, avatarCache, fetchAvatar]);
 
   const handleReact = (messageId: string, emoji: string) => {
     if (socketRef.current) {
@@ -200,7 +215,7 @@ export default function Chat() {
   };
 
   if (loading) return <div>Chargement...</div>;
-  if (!pseudo) return null;
+  if (!pseudo) return <div>Vous devez être connecté pour accéder au chat.</div>;
 
   const groupedMessages: {
     id: string;
@@ -223,6 +238,8 @@ export default function Chat() {
       });
     }
   });
+
+  
 
   return (
     <div className="flex h-screen bg-[#23272a]">
@@ -359,6 +376,7 @@ export default function Chat() {
           ) : (
             groupedMessages.map(({ id, pseudo: user, texts, reactions }) => {
               const userObj = uniqueUsers.find(u => u.username === user);
+              const avatarUrl = userObj?.avatar_url || avatarCache[user] || '/default-avatar.jpg';
               return (
                 <div
                   key={id}
@@ -368,7 +386,7 @@ export default function Chat() {
                 >
                   {/* Avatar */}
                   <img
-                    src={userObj?.avatar_url || '/default-avatar.jpg'}
+                    src={avatarUrl}
                     alt="avatar"
                     className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border mt-1"
                   />
