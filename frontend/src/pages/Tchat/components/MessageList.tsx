@@ -64,7 +64,7 @@ function MessageList({
       ) : (
         filteredMessages.map((message) => {
           const userObj = uniqueUsers.find(u => u.username === message.pseudo);
-          const avatarUrl = userObj?.avatar_url || avatarCache[message.pseudo] || '/default-avatar.jpg';
+          const avatarUrl = avatarCache[message.pseudo] || userObj?.avatar_url || '/default-avatar.jpg';
           return (
             <ChatMessage
               key={message.id}

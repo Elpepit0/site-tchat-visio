@@ -185,22 +185,44 @@ export default function Chat() {
   };
 
   const fetchAvatar = useCallback(async (username: string) => {
-    if (avatarCache[username] !== undefined) return;
+    console.log(`Attempting to fetch avatar for: ${username}`);
+    if (avatarCache[username] !== undefined) {
+      console.log(`Avatar for ${username} already in cache.`);
+      return;
+    }
     try {
       const res = await fetch(`/user/${username}`);
       const data = await res.json();
-      setAvatarCache(prev => ({ ...prev, [username]: data.avatar_url || '/default-avatar.jpg' }));
-    } catch {
-      setAvatarCache(prev => ({ ...prev, [username]: '/default-avatar.jpg' }));
+      const newAvatarUrl = data.avatar_url || '/default-avatar.jpg';
+      setAvatarCache(prev => {
+        const updatedCache = { ...prev, [username]: newAvatarUrl };
+        console.log(`Avatar cache updated for ${username}:`, updatedCache);
+        return updatedCache;
+      });
+    } catch (error) {
+      console.error(`Error fetching avatar for ${username}:`, error);
+      setAvatarCache(prev => {
+        const updatedCache = { ...prev, [username]: '/default-avatar.jpg' };
+        console.log(`Avatar cache updated for ${username} (default):`, updatedCache);
+        return updatedCache;
+      });
     }
   }, [avatarCache]);
   
   useEffect(() => {
       const allAuthors = Array.from(new Set(messages.map(m => m.pseudo)));
+      console.log("All message authors:", allAuthors);
+      console.log("Current uniqueUsers (online users):", uniqueUsers);
+      console.log("Current avatarCache:", avatarCache);
       allAuthors.forEach((author) => {
         const userObj = uniqueUsers.find(u => u.username === author);
-        if (!userObj && avatarCache[author] === undefined) {
+        if (!userObj && (avatarCache[author] === undefined || avatarCache[author] === '/default-avatar.jpg')) {
+          console.log(`Author ${author} is not online and not in cache. Fetching...`);
           fetchAvatar(author);
+        } else if (userObj) {
+          console.log(`Author ${author} is online. Using online avatar.`);
+          // Ensure online user avatars are also in cache for consistency
+          setAvatarCache(prev => ({ ...prev, [author]: userObj.avatar_url || '/default-avatar.jpg' }));
         }
       });
     }, [messages, uniqueUsers, avatarCache, fetchAvatar]);
