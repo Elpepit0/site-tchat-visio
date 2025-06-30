@@ -2,11 +2,11 @@
 import { Routes, Route } from 'react-router-dom';
 
 
-import Login from './pages/login';
-import Register from './pages/register';
-import Chat from './pages/Tchat';
-import VideoChat from './pages/videoChat';
-import Home from './pages/homepage';
+import Login from './pages/Login/login';
+import Register from './pages/Register/register';
+import Chat from './pages/Tchat/Tchat';
+
+import Home from './pages/Home/homepage';
 
 
 function App() {
@@ -16,7 +16,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/chat" element={<Chat />} />
-      <Route path="/video" element={<VideoChat />} />
+      
       <Route path="/" element={<Home />} />
     </Routes>
   );
