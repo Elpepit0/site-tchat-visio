@@ -21,7 +21,7 @@ import requests
 import traceback
 
 # === CONFIGURATION FLASK & REDIS ===
-app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
+app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-moi-vite')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -118,10 +118,21 @@ def logout():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return app.send_static_file(path)
-    else:
-        return app.send_static_file('index.html')
+    root_dir = os.path.abspath(os.path.dirname(__file__))
+    frontend_dist_dir = os.path.join(root_dir, 'frontend', 'dist')
+
+    print(f"Requested path: {path}")
+    full_path = os.path.join(frontend_dist_dir, path)
+    print(f"Full path to check: {full_path}")
+    print(f"Does path exist: {os.path.exists(full_path)}")
+
+    # If the path is for a static file, serve it
+    if path and os.path.exists(full_path):
+        print(f"Serving static file: {path}")
+        return send_from_directory(frontend_dist_dir, path)
+    # Otherwise, serve the index.html for client-side routing
+    print("Serving index.html for client-side routing")
+    return send_from_directory(frontend_dist_dir, 'index.html')
 
 # === VISITEURS ACTIFS ===
 visitors = {}
@@ -141,8 +152,6 @@ def active_visitors():
     return jsonify({'active_visitors': len(active)})
 
 # === UPLOAD AVATAR AVEC BOTO3 ===
-
-import requests
 
 @app.route("/upload-avatar", methods=["POST"])
 def upload_avatar():
@@ -244,7 +253,7 @@ def update_username(sid, new_username):
 def get_messages():
     return [json.loads(m) for m in r.lrange('messages', -MAX_MESSAGES, -1)]
 
-def add_message(message):
+def add_message(message, recipient=None):
     r.rpush('messages', json.dumps(message))
     r.ltrim('messages', -MAX_MESSAGES, -1)
 
@@ -277,8 +286,10 @@ def handle_disconnect():
 
 @socketio.on('send_message')
 def handle_send_message(data):
+    print(f"handle_send_message called with data: {data}")
     text = data.get('text', '').strip()
     if not text or len(text) > 500:
+        print("Invalid text or text length for public message.")
         return
     user_json = r.hget('connected_users', request.sid)
     username = "Anonyme"
@@ -290,8 +301,46 @@ def handle_send_message(data):
         'text': text,
         'reactions': {}
     }
-    add_message(message)
+    print(f"Prepared public message: {message}")
+    add_message(message, recipient=None)  # Public message
+    print("Emitting 'new_message' broadcast=True")
     emit('new_message', message, broadcast=True)
+
+@socketio.on('send_private_message')
+def handle_send_private_message(data):
+    print(f"handle_send_private_message called with data: {data}")
+    text = data.get('text', '').strip()
+    recipient = data.get('to')
+    if not text or len(text) > 500 or not recipient:
+        print("Invalid text, text length, or missing recipient for private message.")
+        return
+    user_json = r.hget('connected_users', request.sid)
+    username = "Anonyme"
+    if user_json:
+        username = json.loads(user_json)["username"]
+    message = {
+        'id': str(uuid.uuid4()),
+        'pseudo': username,
+        'text': text,
+        'reactions': {},
+        'recipient': recipient
+    }
+    print(f"Prepared private message: {message}")
+    add_message(message, recipient=recipient)  # Private message
+    print(f"Emitting 'new_private_message' to sender (room={request.sid})")
+    emit('new_private_message', message, room=request.sid)
+    # Find recipient's SID
+    recipient_sid = None
+    for sid, user_info_json in r.hgetall('connected_users').items():
+        user_info = json.loads(user_info_json)
+        if user_info["username"] == recipient:
+            recipient_sid = sid
+            break
+    if recipient_sid:
+        print(f"Emitting 'new_private_message' to recipient (room={recipient_sid})")
+        emit('new_private_message', message, room=recipient_sid)
+    else:
+        print(f"Recipient {recipient} not found or not connected.")
 
 @socketio.on('delete_message')
 def handle_delete_message(data):
@@ -338,55 +387,8 @@ def handle_react_message(data):
             r.rpush('messages', json.dumps(m))
         emit('messages', messages, broadcast=True)
 
-# === WEBSOCKET POUR WEBRTC (rooms pour la visio uniquement) ===
-
-@socketio.on('join-room')
-def handle_join_room(room):
-    join_room(room)
-    emit('user-connected', {'room': room, 'user': request.sid}, room=room)
-
-@socketio.on('offer')
-def handle_offer(data):
-    room = data.get('room')
-    if room:
-        emit('offer', data, room=room, include_self=False)
-
-@socketio.on('answer')
-def handle_answer(data):
-    room = data.get('room')
-    if room:
-        emit('answer', data, room=room, include_self=False)
-
-@socketio.on('ice-candidate')
-def handle_ice(data):
-    room = data.get('room')
-    if room:
-        emit('ice-candidate', data, room=room, include_self=False)
-
-# === AUTRES ROUTES ET CONFIG ===
-
-@app.errorhandler(404)
-def not_found(e):
-    return send_from_directory(app.static_folder, 'index.html')
-
-@app.before_request
-def log_origin():
-    print("Origin:", request.headers.get("Origin"))
-
-@app.after_request
-def allow_cors_for_native_clients(response):
-    if request.headers.get("Origin") is None:
-        response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
-
-@app.route('/user/<username>')
-def get_user(username):
-    user = User.query.filter_by(username=username).first()
-    if user and user.avatar_url:
-        return jsonify({'avatar_url': user.avatar_url})
-    return jsonify({'avatar_url': None}), 404
-
-# === LANCEMENT DU SERVEUR ===
+ # === LANCEMENT DU SERVEUR ===
+    
 if __name__ == '__main__':
-    print("Eventlet utilisé :", socketio.async_mode)
-    socketio.run(app, host='0.0.0.0', port=port)
+        print("Eventlet utilisé :", socketio.async_mode)
+        socketio.run(app, host='0.0.0.0', port=port)
