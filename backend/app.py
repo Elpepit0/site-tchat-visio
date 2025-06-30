@@ -151,6 +151,13 @@ def active_visitors():
     active = [sid for sid, last_ping in visitors.items() if now - last_ping < 2]
     return jsonify({'active_visitors': len(active)})
 
+@app.route('/user/<username>')
+def get_user_info(username):
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return jsonify({'username': user.username, 'avatar_url': user.avatar_url or '/default-avatar.jpg'})
+    return jsonify({'error': 'User not found'}), 404
+
 # === UPLOAD AVATAR AVEC BOTO3 ===
 
 @app.route("/upload-avatar", methods=["POST"])
