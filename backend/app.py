@@ -71,21 +71,10 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     avatar_url = db.Column(db.String(256), nullable=True)
-    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+
 
 with app.app_context():
     db.create_all()
-
-@app.cli.command("set-admin")
-@click.argument("username")
-def set_admin_command(username):
-    user = User.query.filter_by(username=username).first()
-    if user:
-        user.is_admin = True
-        db.session.commit()
-        print(f"User {username} has been granted admin privileges.")
-    else:
-        print(f"User {username} not found.")
 
 # === AUTHENTIFICATION ===
 @app.route('/register', methods=['POST'])
@@ -120,8 +109,7 @@ def me():
         if user:
             return jsonify({
                 'username': session['username'],
-                'avatar_url': user.avatar_url,
-                'is_admin': user.is_admin
+                'avatar_url': user.avatar_url
             })
         else:
             # This case might happen if the user was deleted but the session still exists
