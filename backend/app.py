@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify, session, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import boto3
@@ -62,6 +63,7 @@ socketio = SocketIO(app, cors_allowed_origins=[
 ], async_mode="eventlet", manage_session=True, message_queue=REDIS_URL, path='/socket.io/')
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # === TABLE USER ===
 class User(db.Model):
