@@ -41,6 +41,8 @@ export default function Chat() {
 
   const navigate = useNavigate();
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
     async function fetchUser() {
       try {
@@ -48,6 +50,7 @@ export default function Chat() {
         const data = await res.json();
         if (data.username) {
           setPseudo(data.username);
+          setIsAdmin(data.is_admin || false);
         } else {
           navigate('/');
         }
@@ -270,11 +273,12 @@ export default function Chat() {
     };
   }, [pseudo]);
 
+
   function replaceEmojis(text: string) {
+    const typedData = data as { emojis: { [key: string]: { id: string; native?: string; keywords?: string[]; skins?: { native: string }[] } } };
     return text.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code) => {
       const q = code.toLowerCase();
-      // @ts-ignore
-      const emojis = Object.values(data.emojis) as any[];
+      const emojis = Object.values(typedData.emojis);
       const exact = emojis.find(e => e.id === q);
       if (exact) {
         return exact.skins ? exact.skins[0].native : exact.native || match;
@@ -291,12 +295,26 @@ export default function Chat() {
 
   const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  let touchTimeout: number | null = null;
+  const touchTimeoutRef = useRef<number | null>(null);
   const handleTouchStart = (id: string) => {
-    touchTimeout = window.setTimeout(() => setReactingTo(id), 500);
+    // Clear any existing timeout
+    if (touchTimeoutRef.current) {
+      clearTimeout(touchTimeoutRef.current);
+    }
+    touchTimeoutRef.current = window.setTimeout(() => {
+      setReactingTo(id);
+      // Vibrate on mobile if the API is available
+      if (isMobile && typeof navigator.vibrate === "function") {
+        navigator.vibrate(50);
+      }
+    }, 1500); // 1500ms for long press
   };
+
   const handleTouchEnd = () => {
-    if (touchTimeout) clearTimeout(touchTimeout);
+    if (touchTimeoutRef.current) {
+      clearTimeout(touchTimeoutRef.current);
+      touchTimeoutRef.current = null;
+    }
   };
 
   if (loading) return <Spinner />;
@@ -363,6 +381,7 @@ export default function Chat() {
           handleNavigate={navigate}
           privateChatRecipient={privateChatRecipient}
           setPrivateChatRecipient={setPrivateChatRecipient}
+          isAdmin={isAdmin}
         />
 
         <MessageList

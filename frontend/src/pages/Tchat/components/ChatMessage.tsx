@@ -1,6 +1,7 @@
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import '../../../index.css'
+import { useRef, useState, useEffect } from 'react';
 
 interface ChatMessageProps {
   message: {
@@ -20,6 +21,10 @@ interface ChatMessageProps {
   replaceEmojis: (text: string) => string;
 }
 
+interface EmojiMartData {
+  native: string;
+}
+
 function ChatMessage({
   message,
   pseudo,
@@ -32,8 +37,43 @@ function ChatMessage({
   handleTouchEnd,
   replaceEmojis,
 }: ChatMessageProps) {
+  const messageContainerRef = useRef<HTMLDivElement>(null);
+  const [pickerClasses, setPickerClasses] = useState('absolute z-40 opacity-0 transition-opacity duration-150');
+
+  const PICKER_HEIGHT = 435; // Approximate height of the picker
+  const PICKER_WIDTH = 352;  // Approximate width of the picker
+
+  useEffect(() => {
+    if (reactingTo === message.id && messageContainerRef.current) {
+      const rect = messageContainerRef.current.getBoundingClientRect();
+      
+      let verticalClass = 'top-full mt-2';
+      // Check if there's enough space below, but more space above
+      if ((window.innerHeight - rect.bottom) < PICKER_HEIGHT && rect.top > PICKER_HEIGHT) {
+        verticalClass = 'bottom-full mb-2';
+      }
+
+      let horizontalClass = 'left-1/2 -translate-x-1/2';
+      const pickerHalfWidth = PICKER_WIDTH / 2;
+      const containerCenter = rect.left + rect.width / 2;
+
+      // Check for horizontal overflow
+      if (containerCenter - pickerHalfWidth < 0) {
+        horizontalClass = 'left-0';
+      } else if (containerCenter + pickerHalfWidth > window.innerWidth) {
+        horizontalClass = 'right-0';
+      }
+
+      // Use a timeout to allow the DOM to update and apply transition
+      setTimeout(() => setPickerClasses(`absolute z-40 ${verticalClass} ${horizontalClass} opacity-100`), 0);
+    } else {
+      setPickerClasses('absolute z-40 opacity-0 transition-opacity duration-150');
+    }
+  }, [reactingTo, message.id]);
+
   return (
     <div
+      ref={messageContainerRef}
       key={message.id}
       className="flex items-start gap-2 sm:gap-4 group relative"
       onTouchStart={isMobile ? () => handleTouchStart(message.id) : undefined}
@@ -79,20 +119,30 @@ function ChatMessage({
             </div>
           )}
           {reactingTo === message.id && (
-            <div className="absolute z-40 left-1/2 -translate-x-1/2 top-full mt-2">
-              <Picker
-                data={data}
-                onEmojiSelect={(emoji: any) => handleReact(message.id, emoji.native)}
-                previewPosition="none"
-                skinTonePosition="none"
-                theme="dark"
-              />
-            </div>
+            <>
+              {/* Overlay to close picker on click outside */}
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setReactingTo(null)}
+              ></div>
+              <div 
+                className={pickerClasses}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Picker
+                  data={data}
+                  onEmojiSelect={(emoji: EmojiMartData) => handleReact(message.id, emoji.native)}
+                  previewPosition="none"
+                  skinTonePosition="none"
+                  theme="dark"
+                />
+              </div>
+            </>
           )}
           {!isMobile && (
             <button
               className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#36393f] border border-[#23272a] rounded-full w-8 h-8 flex items-center justify-center shadow hover:bg-indigo-700 hover:text-white text-indigo-400"
-              onClick={() => setReactingTo(message.id)}
+              onClick={() => setReactingTo(reactingTo === message.id ? null : message.id)}
               title="Ajouter une réaction"
             >
               <span className="text-xl font-bold">+</span>
